@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#080b12">
+<title>ELLIOT · Live View</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{color-scheme:dark;--bg:#080b12;--panel:#101725;--line:#202d40;--muted:#8d9bb0;--text:#f4f7fb;--accent:#64e6c2;--blue:#6ba8ff;--danger:#ff6b7b}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:radial-gradient(ellipse at 50% -20%,#19334a 0%,#0b1220 42%,var(--bg) 75%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+body{padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom);display:flex;justify-content:center}
+.app{width:100%;max-width:760px;padding:22px 0 28px;display:flex;flex-direction:column;gap:18px}
+.top{display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:11px}.logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(145deg,#79f0cf,#438cda);display:grid;place-items:center;color:#07131a;font-weight:950;font-size:19px;box-shadow:0 8px 28px #51d9b544}.brand b{font-size:15px;letter-spacing:.19em}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.16em;margin-top:3px}.live{border:1px solid #2d4a4a;border-radius:99px;padding:7px 10px;color:#9af3d8;font-size:11px;letter-spacing:.08em;display:flex;gap:7px;align-items:center}.dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+.hero h1{font-size:clamp(25px,6vw,34px);margin:4px 0 6px;letter-spacing:-.04em}.hero p{color:var(--muted);font-size:13px;line-height:1.55;margin:0}
+.screen{position:relative;overflow:hidden;border:1px solid #29384c;border-radius:22px;background:#03060a;aspect-ratio:16/9;min-height:190px;box-shadow:0 24px 70px #0008}
+video{width:100%;height:100%;object-fit:contain;display:block;background:#03060a}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;background:linear-gradient(145deg,#101a2b,#070b12);text-align:center;padding:20px;transition:opacity .25s}
+.overlay.hidden{opacity:0;pointer-events:none}.spinner{width:42px;height:42px;border-radius:50%;border:3px solid #314052;border-top-color:var(--accent);animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.overlay strong{font-size:14px}.overlay span{font-size:12px;color:var(--muted);max-width:280px;line-height:1.5}
+.corner{position:absolute;left:13px;top:13px;display:flex;gap:7px;align-items:center;background:#060a11c9;border:1px solid #ffffff1b;border-radius:99px;padding:7px 10px;font-size:10px;letter-spacing:.1em;color:#d9e8f7;backdrop-filter:blur(12px)}
+.stats{display:flex;gap:8px;flex-wrap:wrap}.stat{flex:1;min-width:90px;padding:12px 13px;border:1px solid var(--line);border-radius:14px;background:#0e1623}.stat small{display:block;color:var(--muted);font-size:10px;margin-bottom:5px}.stat b{font-size:13px;font-variant-numeric:tabular-nums}
+.actions{display:flex;gap:10px}.btn{flex:1;border:0;border-radius:14px;padding:15px 18px;font-size:13px;font-weight:750;cursor:pointer;transition:transform .15s,opacity .15s}.btn:active{transform:scale(.98)}.btn:disabled{opacity:.45;cursor:default}.primary{background:linear-gradient(110deg,#6be7c5,#73b5ff);color:#07131a;box-shadow:0 10px 25px #54c9b32a}.secondary{background:#172233;border:1px solid #2a3a50;color:#e8eff8}
+.notice{padding:13px 15px;border:1px solid var(--line);border-radius:14px;background:#0d1521;color:var(--muted);font-size:11px;line-height:1.5}.notice.error{border-color:#63323c;color:#ff9eaa;background:#1a1018}
+.footer{text-align:center;color:#607087;font-size:10px;letter-spacing:.08em}
+@media(max-width:420px){.app{gap:15px;padding-top:16px}.screen{border-radius:17px}.actions .btn{padding:14px 10px}.stats{gap:6px}.stat{padding:10px}}
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="top">
+    <div class="brand"><div class="logo">E</div><div><b>ELLIOT</b><small>REMOTE CONTROL · LIVE VIEW</small></div></div>
+    <div class="live"><i class="dot"></i><span id="statusPill">CONNECTING</span></div>
+  </header>
+  <section class="hero"><h1>Трансляция экрана</h1><p>Защищённое WebRTC-подключение к вашему устройству. Видео передаётся напрямую, без проксирования через сервер.</p></section>
+  <section class="screen">
+    <video id="video" autoplay playsinline muted></video>
+    <div class="corner"><i class="dot"></i><span id="videoState">SECURE SESSION</span></div>
+    <div class="overlay" id="overlay"><div class="spinner" id="spinner"></div><strong id="overlayTitle">Подключаемся к устройству…</strong><span id="overlayText">Проверяем Telegram и ожидаем ответ агента</span></div>
+  </section>
+  <section class="stats">
+    <div class="stat"><small>СОЕДИНЕНИЕ</small><b id="connectionStat">Инициализация</b></div>
+    <div class="stat"><small>ВИДЕО</small><b id="resolutionStat">—</b></div>
+    <div class="stat"><small>ЗАДЕРЖКА</small><b id="latencyStat">—</b></div>
+  </section>
+  <div class="actions">
+    <button class="btn primary" id="retryBtn" hidden>Повторить подключение</button>
+    <button class="btn secondary" id="disconnectBtn" disabled>Отключиться</button>
+  </div>
+  <div class="notice" id="notice">Не закрывайте Mini App во время просмотра. Для остановки трансляции нажмите «Отключиться».</div>
+  <footer class="footer">ELLIOT CONTROL CENTER · WEBRTC</footer>
+</main>
+<script>
+(() => {
+  const tg = window.Telegram?.WebApp;
+  const $ = id => document.getElementById(id);
+  const video=$("video"), overlay=$("overlay"), spinner=$("spinner");
+  let ws=null, pc=null, stopped=false, sessionStarted=false, statsTimer=null, agentWaitTimer=null;
+  const setStatus=(s)=>{$("statusPill").textContent=s.toUpperCase();$("connectionStat").textContent=s};
+  function showOverlay(title, text, error=false){
+    overlay.classList.remove("hidden"); $("overlayTitle").textContent=title; $("overlayText").textContent=text;
+    spinner.style.display=error?"none":"block";
+    $("notice").classList.toggle("error",error);
+    if(error)$("notice").textContent=text;
+  }
+  function hideOverlay(){overlay.classList.add("hidden")}
+  function wsUrl(){
+    const u=new URL("/ws/stream",location.href);
+    u.protocol=location.protocol==="https:"?"wss:":"ws:";
+    return u.toString();
+  }
+  function waitIce(peer){
+    if(peer.iceGatheringState==="complete")return Promise.resolve();
+    return new Promise(resolve=>{
+      const timer=setTimeout(done,9000);
+      function done(){clearTimeout(timer);peer.removeEventListener("icegatheringstatechange",check);resolve()}
+      function check(){if(peer.iceGatheringState==="complete")done()}
+      peer.addEventListener("icegatheringstatechange",check);
+    });
+  }
+  async function makeOffer(){
+    if(!pc) return;
+    pc.addTransceiver("video",{direction:"recvonly"});
+    const offer=await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await waitIce(pc);
+    ws.send(JSON.stringify({type:"offer",sdp:pc.localDescription.sdp}));
+    showOverlay("Ожидаем видеопоток…","Сигнализация установлена, ждём первый видеокадр");
+    setStatus("Ожидание видео");
+  }
+  function startStats(){
+    clearInterval(statsTimer);
+    statsTimer=setInterval(async()=>{
+      if(!pc)return;
+      try{
+        const reports=await pc.getStats();
+        reports.forEach(r=>{
+          if(r.type==="inbound-rtp"&&r.kind==="video"){
+            if(r.frameWidth&&r.frameHeight)$("resolutionStat").textContent=`${r.frameWidth} × ${r.frameHeight}`;
+            if(r.roundTripTime!=null)$("latencyStat").textContent=`${Math.round(r.roundTripTime*500)} мс`;
+          }
+        });
+      }catch{}
+    },2000);
+  }
+  async function connect(){
+    stopped=false;sessionStarted=false;
+    $("retryBtn").hidden=true;$("disconnectBtn").disabled=false;
+    $("notice").classList.remove("error");
+    $("notice").textContent="Не закрывайте Mini App во время просмотра. Для остановки трансляции нажмите «Отключиться».";
+    showOverlay("Проверяем доступ…","Подготавливаем защищённое подключение");
+    setStatus("Авторизация");
+    const initData=tg?.initData||"";
+    if(!initData){fail("Откройте эту страницу из Telegram Mini App. initData отсутствует.");return}
+    try{
+      ws=new WebSocket(wsUrl());
+      ws.onopen=()=>ws.send(JSON.stringify({type:"browser_auth",initData}));
+      ws.onmessage=async ev=>{
+        let msg;try{msg=JSON.parse(ev.data)}catch{return}
+        if(msg.type==="waiting_agent"){
+          clearTimeout(agentWaitTimer);
+          agentWaitTimer=setTimeout(()=>fail("Компьютер не подключился за 40 секунд. Возможно, требуется подтверждение на самом ПК."),40000);
+          sessionStarted=true;showOverlay("Запускаем трансляцию…","Команда отправлена агенту на вашем компьютере");setStatus("Агент запускается");
+          try{
+            pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+            pc.ontrack=e=>{if(e.streams?.[0])video.srcObject=e.streams[0];video.play().catch(()=>{});hideOverlay();setStatus("Подключено");$("videoState").textContent="LIVE · WEBRTC";startStats()};
+            pc.onconnectionstatechange=()=>{const s=pc?.connectionState;if(s==="connected"){setStatus("Подключено")}else if(s==="failed"||s==="disconnected"){fail("WebRTC-соединение потеряно. Попробуйте подключиться снова.")}};
+            await makeOffer();
+          }catch(err){fail("Не удалось создать WebRTC Offer: "+err.message)}
+        }else if(msg.type==="agent_connected"){
+          clearTimeout(agentWaitTimer);
+          showOverlay("Агент подключён","Согласовываем параметры видеопотока…");setStatus("Согласование");
+        }else if(msg.type==="answer"){
+          if(!pc){fail("Получен SDP Answer до создания PeerConnection.");return}
+          try{await pc.setRemoteDescription({type:"answer",sdp:msg.sdp})}catch(err){fail("Не удалось применить SDP Answer: "+err.message)}
+        }else if(msg.type==="error"){
+          fail(humanError(msg.message||"Ошибка signaling"));
+        }
+      };
+      ws.onerror=()=>fail("Не удалось подключиться к signaling-серверу. Проверьте HTTPS/WSS и reverse proxy.");
+      ws.onclose=()=>{if(!stopped)fail("Signaling-соединение закрыто.")};
+    }catch(err){fail("Ошибка подключения: "+err.message)}
+  }
+  function humanError(s){
+    const map={no_active_device_for_telegram_user:"К вашему Telegram-аккаунту не привязано активное устройство.",invalid_init_data_hash:"Telegram initData не прошёл проверку.",init_data_expired:"Данные Telegram устарели. Закройте и снова откройте Mini App.",agent_auth_failed:"Агент не прошёл авторизацию.",agent_disconnected:"Агент отключился."};
+    return map[s]||s;
+  }
+  function fail(message){
+    if(stopped)return;
+    setStatus("Ошибка");showOverlay("Не удалось подключиться",message,true);
+    $("retryBtn").hidden=false;$("disconnectBtn").disabled=false;
+    $("videoState").textContent="OFFLINE";
+  }
+  function disconnect(){
+    stopped=true;clearInterval(statsTimer);clearTimeout(agentWaitTimer);
+    try{if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:"stop"}))}catch{}
+    try{pc?.close()}catch{}pc=null;
+    try{ws?.close()}catch{}ws=null;
+    video.srcObject=null;sessionStarted=false;
+    $("retryBtn").hidden=false;$("disconnectBtn").disabled=true;
+    $("resolutionStat").textContent="—";$("latencyStat").textContent="—";
+    showOverlay("Трансляция отключена","Подключение остановлено. Нажмите «Повторить подключение», чтобы начать снова",true);
+    $("overlayTitle").textContent="Трансляция отключена";setStatus("Отключено");
+    $("videoState").textContent="OFFLINE";
+  }
+  $("retryBtn").addEventListener("click",()=>{disconnect();connect()});
+  $("disconnectBtn").addEventListener("click",disconnect);
+  tg?.ready();tg?.expand();
+  connect();
+})();
+</script>
+</body>
+</html>
