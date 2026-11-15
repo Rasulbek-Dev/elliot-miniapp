@@ -3,176 +3,312 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#080b12">
-<title>ELLIOT · Live View</title>
+<meta name="theme-color" content="#05070b">
+<title>ELLIOT · Remote Desktop</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-:root{color-scheme:dark;--bg:#070a10;--panel:#101722;--line:#263244;--muted:#8997aa;--text:#f4f7fb;--accent:#83efd0;--blue:#8bb8ff;--danger:#ff5268}
-*{box-sizing:border-box}
-html,body{margin:0;width:100%;min-height:100%;background:radial-gradient(ellipse at 50% -20%,#1b3449 0%,#0b111c 48%,var(--bg) 80%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent}
-body{padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom);display:flex;justify-content:center}
-button{font:inherit}
-.app{width:100%;max-width:900px;min-height:100dvh;padding:clamp(22px,5vh,48px) 0 24px;display:flex;flex-direction:column;gap:22px}
-.top{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.brand{display:flex;flex-direction:column;gap:2px}
-.brand b{font-size:clamp(31px,7vw,48px);line-height:.98;font-weight:850;letter-spacing:.19em;background:linear-gradient(105deg,#fff 15%,#b9d5e7 60%,#81ebd0);-webkit-background-clip:text;background-clip:text;color:transparent}
-.brand small{font-size:10px;font-weight:700;color:#8494a9;letter-spacing:.34em;margin-left:4px}
-.top-actions{display:flex;align-items:center;gap:10px}
-.help-btn{width:40px;height:40px;border-radius:50%;border:1px solid #344256;background:#121c2a;color:#eaf2fa;font-size:18px;font-weight:700;cursor:pointer}
-.pill{border:1px solid #2d4a4a;border-radius:99px;padding:8px 12px;color:#9af3d8;font-size:10px;letter-spacing:.09em;display:flex;gap:8px;align-items:center;white-space:nowrap}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
-.pill.busy{color:#b9c8da;border-color:#2b3a50}.pill.busy .dot{background:var(--blue);box-shadow:0 0 12px var(--blue);animation:blink 1.1s ease-in-out infinite}
-.pill.err{color:#ff9eaa;border-color:#63323c}.pill.err .dot{background:var(--danger);box-shadow:0 0 12px var(--danger)}
-@keyframes blink{50%{opacity:.35}}
-.hero{display:flex;justify-content:space-between;align-items:end;gap:18px}
-.hero h1{font-size:clamp(20px,4vw,27px);margin:0 0 6px;letter-spacing:-.035em}
-.hero p{color:var(--muted);font-size:12px;line-height:1.6;margin:0;max-width:560px}
-.screen{position:relative;overflow:hidden;border:1px solid #344256;border-radius:24px;background:#020408;aspect-ratio:16/9;min-height:210px;box-shadow:0 28px 80px #0009,0 0 0 1px #ffffff08}
-.screen.control{border-color:#426e69;box-shadow:0 28px 80px #0009,0 0 0 1px #83efd022}
-video{width:100%;height:100%;object-fit:contain;display:block;background:#020408;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-.screen.control video{cursor:crosshair}
-.corner{position:absolute;left:14px;top:14px;display:flex;gap:7px;align-items:center;background:#060a11c9;border:1px solid #ffffff1b;border-radius:99px;padding:7px 10px;font-size:9px;letter-spacing:.12em;color:#d9e8f7;backdrop-filter:blur(14px);pointer-events:none}
-.stats-chip{position:absolute;right:13px;top:13px;display:flex;gap:11px;align-items:center;padding:8px 11px;border:1px solid #ffffff20;border-radius:11px;background:#060a11c9;color:#dce8f5;backdrop-filter:blur(14px);font-size:10px;font-variant-numeric:tabular-nums;pointer-events:none}
-.stats-chip span{white-space:nowrap}.stats-chip b{font-weight:750;color:#fff}.stats-chip i{height:12px;width:1px;background:#ffffff30}
-.ripple{position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:2px solid var(--accent);background:#64e6c230;pointer-events:none;animation:ripple .55s ease-out forwards}
-.ripple.right{border-color:#ffc46b;background:#ffc46b30}
-@keyframes ripple{from{transform:scale(.4);opacity:1}to{transform:scale(1.5);opacity:0}}
-.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;background:linear-gradient(145deg,#101a2b,#070b12);text-align:center;padding:18px;transition:opacity .3s;z-index:3}
-.overlay.hidden{opacity:0;pointer-events:none}
-.spinner{width:43px;height:43px;border-radius:50%;border:3px solid #314052;border-top-color:var(--accent);border-right-color:var(--blue);animation:spin .85s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.errIcon{width:46px;height:46px;border-radius:50%;display:none;place-items:center;background:#2a1219;border:1px solid #63323c;color:var(--danger);font-size:22px;font-weight:800}
-.overlay.error .spinner{display:none}.overlay.error .errIcon{display:grid}
-.overlay strong{font-size:15px}.overlay .sub{font-size:12px;color:var(--muted);max-width:330px;line-height:1.5}
-.steps{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;text-align:left}
-.steps li{display:flex;align-items:center;gap:9px;font-size:11.5px;color:#5f6f86;transition:color .25s}
-.steps li i{width:14px;height:14px;border-radius:50%;border:1.5px solid #3a4a60;display:grid;place-items:center;font-style:normal;font-size:9px;color:transparent}
-.steps li.active{color:#e4edf8}.steps li.active i{border-color:var(--accent);box-shadow:0 0 10px #64e6c255;animation:blink 1.1s ease-in-out infinite}
-.steps li.done{color:#8fdcc6}.steps li.done i{background:var(--accent);border-color:var(--accent);color:#07131a}
-.overlay.error .steps{display:none}
-.retry{display:none;margin-top:4px;border:0;border-radius:13px;padding:12px 22px;font-size:13px;font-weight:750;cursor:pointer;background:linear-gradient(110deg,#6be7c5,#73b5ff);color:#07131a}
-.overlay.error .retry,.overlay.idle .retry{display:block}
-.actions{display:flex;justify-content:flex-end}
-.btn{border:1px solid #8c2636;border-radius:12px;padding:11px 18px;font-size:12px;font-weight:750;cursor:pointer;background:linear-gradient(180deg,#a82d42,#781b2d);color:#fff;box-shadow:0 8px 22px #a51f3833;transition:transform .15s,opacity .15s}
-.btn:active{transform:scale(.98)}.btn:disabled{opacity:.35;cursor:default}
-.notice{padding:13px 15px;border:1px solid var(--line);border-radius:14px;background:#0d1521;color:var(--muted);font-size:11px;line-height:1.5}
-.notice.warn{border-color:#5b4a2a;color:#ffd79a;background:#19140d}
-.footer{text-align:center;color:#607087;font-size:9px;letter-spacing:.14em}
-.orientation{display:none;position:fixed;inset:0;z-index:20;background:radial-gradient(circle at 50% 35%,#1b3449,#080b12 72%);padding:28px;align-items:center;justify-content:center;text-align:center}
-.orientation-inner{max-width:290px;display:flex;flex-direction:column;align-items:center;gap:18px}
-.rotate-icon{width:66px;height:66px;color:var(--accent);filter:drop-shadow(0 0 20px #83efd044)}
-.orientation strong{font-size:19px;line-height:1.35}.orientation span{font-size:12px;line-height:1.6;color:#93a3b7}
-.tutorial{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;padding:22px;background:#02050bd9;backdrop-filter:blur(14px)}
-.tutorial.open{display:flex}
-.tutorial-card{width:min(100%,410px);padding:26px;border:1px solid #344256;border-radius:23px;background:linear-gradient(145deg,#172333,#0b111b);box-shadow:0 28px 90px #000b}
-.tutorial-kicker{font-size:9px;letter-spacing:.22em;color:var(--accent);font-weight:800}
-.tutorial-card h2{font-size:23px;margin:9px 0 20px;letter-spacing:-.04em}
-.tutorial-step{display:flex;gap:13px;align-items:flex-start;margin:16px 0}
-.tutorial-num{flex:0 0 29px;height:29px;border-radius:10px;background:#1b3c3a;color:var(--accent);display:grid;place-items:center;font-size:12px;font-weight:800}
-.tutorial-step p{margin:2px 0 0;font-size:13px;line-height:1.55;color:#d6e0ec}
-.tutorial-foot{display:flex;justify-content:flex-end;margin-top:23px}
-.tutorial-close{border:0;border-radius:12px;padding:12px 20px;background:linear-gradient(110deg,#83efd0,#8bb8ff);color:#07131a;font-weight:800;cursor:pointer}
-@media(max-width:560px){body{padding-left:14px;padding-right:14px}.app{gap:17px;padding-top:22px}.screen{border-radius:18px;min-height:190px}.stats-chip{gap:7px;padding:7px 8px;font-size:9px}.hero p{font-size:11px}}
-@media (orientation:portrait) and (pointer:coarse){.orientation{display:flex}}
-@media (orientation:landscape) and (max-height:600px) and (pointer:coarse){
- body{padding:0;overflow:hidden}.app{max-width:none;min-height:100dvh;height:100dvh;padding:0;gap:0}
- .top,.hero,.actions,.notice,.footer{display:none}
- .screen{position:fixed;inset:0;width:100vw;height:100dvh;min-height:0;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none}
- video{width:100%;height:100%;object-fit:contain}
- .corner{left:max(12px,env(safe-area-inset-left));top:max(10px,env(safe-area-inset-top))}
- .stats-chip{right:max(12px,env(safe-area-inset-right));top:max(10px,env(safe-area-inset-top))}
+:root{
+  color-scheme:dark;
+  --bg:#05070b;--glass:rgba(16,22,32,.66);--glass-strong:rgba(12,17,26,.88);
+  --line:rgba(255,255,255,.10);--line-strong:rgba(255,255,255,.18);
+  --text:#f5f8fc;--muted:#8f9db1;--accent:#83efd0;--blue:#8bb8ff;--danger:#ff5d73;
+  --grad:linear-gradient(110deg,#83efd0 0%,#8bb8ff 100%);
+  --sl:env(safe-area-inset-left,0px);--sr:env(safe-area-inset-right,0px);
+  --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);
 }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"SF Pro Display","Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer}
+svg{display:block}
 
-/* Минимальный полноэкранный интерфейс: оставляем только клавиатуру и отключение. */
-html,body{width:100%;height:100%;min-height:100%;padding:0!important;margin:0;overflow:hidden;background:#000}
-body{display:block}
-.app{width:100vw;max-width:none;height:100dvh;min-height:0;padding:0!important;margin:0;display:block}
-.top,.hero,.actions,.notice,.footer,.corner,.stats-chip,.orientation,.tutorial{display:none!important}
-.screen{position:fixed;inset:0;width:100vw;height:100dvh;min-height:0;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none;background:#000}
-#video{width:100%;height:100%;object-fit:contain;touch-action:none}
-.overlay{background:#000d;gap:8px}
-.overlay strong{font-size:13px}
-.overlay .sub,.overlay .steps{display:none}
-.overlay.error .sub{display:block;max-width:260px}
-.overlay .retry{font-size:12px;padding:10px 16px}
-.mini-controls{position:fixed;z-index:10;right:max(12px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:9px;opacity:.72}
-.mini-controls:active{opacity:1}
-.mini-icon{width:43px;height:43px;border-radius:50%;border:1px solid #ffffff45;background:#101923d9;color:#fff;font-size:19px;display:grid;place-items:center;backdrop-filter:blur(10px);box-shadow:0 4px 18px #0008;cursor:pointer}
-.disconnect-icon{font-size:25px;color:#ff9aa6}
-#dragToggle.active{background:#83efd0;color:#07131a;border-color:#83efd0;opacity:1}
-.keyboard-panel{position:fixed;z-index:11;left:12px;right:112px;bottom:max(14px,env(safe-area-inset-bottom));display:none;gap:7px;padding:7px;border:1px solid #ffffff35;border-radius:15px;background:#101923ef;backdrop-filter:blur(12px)}
-.keyboard-panel.open{display:flex}
-.keyboard-panel input{min-width:0;flex:1;border:0;outline:0;background:#202d3b;color:#fff;border-radius:10px;padding:0 11px;font-size:16px}
-.keyboard-panel button{border:0;border-radius:10px;background:#83efd0;color:#07131a;font-weight:800;padding:0 13px;font-size:12px}
+/* ---------- Логотип ---------- */
+.logo{font-weight:850;letter-spacing:.2em;line-height:1;background:linear-gradient(105deg,#fff 10%,#c3dcec 55%,#83efd0 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;margin-right:-.2em}
+.logo-xl{font-size:clamp(44px,11vh,84px)}
+.logo-sub{font-size:10px;font-weight:700;letter-spacing:.42em;color:#7f8ea3;margin-top:10px;margin-right:-.42em}
+
+/* ---------- Сцена с видео ---------- */
+.stage{position:fixed;inset:0;background:#000;overflow:hidden}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;display:block;
+  touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.stage.control video{cursor:crosshair}
+
+.ripple{position:absolute;width:38px;height:38px;margin:-19px 0 0 -19px;border-radius:50%;border:2px solid var(--accent);
+  background:#83efd02e;pointer-events:none;animation:ripple .55s ease-out forwards;z-index:4}
+.ripple.right{border-color:#ffc46b;background:#ffc46b30}
+@keyframes ripple{from{transform:scale(.4);opacity:1}to{transform:scale(1.6);opacity:0}}
+
+/* кольцо удержания (1 с до перетаскивания) */
+.hold{position:absolute;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;border:2px solid var(--accent);
+  background:#83efd01a;pointer-events:none;opacity:0;z-index:4;transform:scale(1.5)}
+.hold.run{animation:holdfill 1s linear forwards}
+.hold.grab{animation:none;opacity:1;transform:scale(1);background:#83efd04d;box-shadow:0 0 28px #83efd077}
+@keyframes holdfill{0%,20%{opacity:0;transform:scale(1.5)}32%{opacity:1}100%{opacity:1;transform:scale(.62)}}
+
+/* ---------- Статус ---------- */
+.statusbar{position:fixed;z-index:6;left:calc(14px + var(--sl));top:calc(10px + var(--st));display:flex;align-items:center;gap:10px;
+  padding:7px 13px 7px 12px;border:1px solid var(--line);border-radius:99px;background:var(--glass);
+  -webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);pointer-events:none;
+  font-size:10px;letter-spacing:.14em;opacity:.78;transition:opacity .4s}
+.statusbar .logo{font-size:11px;letter-spacing:.24em}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent);flex:none}
+.statusbar.busy .dot{background:var(--blue);box-shadow:0 0 12px var(--blue);animation:blink 1.1s ease-in-out infinite}
+.statusbar.err .dot{background:var(--danger);box-shadow:0 0 12px var(--danger)}
+@keyframes blink{50%{opacity:.3}}
+.stats{display:none;gap:9px;align-items:center;font-variant-numeric:tabular-nums;letter-spacing:.04em;color:#cfdbea}
+body.show-stats .stats{display:flex}
+.stats b{color:#fff;font-weight:750}.stats i{width:1px;height:11px;background:#ffffff30}
+
+/* ---------- Док управления ---------- */
+.dock{position:fixed;z-index:8;right:calc(14px + var(--sr));top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;
+  padding:8px;border:1px solid var(--line);border-radius:26px;background:var(--glass);
+  -webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);
+  box-shadow:0 14px 44px #000a,inset 0 1px 0 #ffffff12;transition:opacity .35s}
+.dock.idle{opacity:.3}
+.dbtn{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:#e9f1fa;
+  background:linear-gradient(180deg,#ffffff14,#ffffff06);border:1px solid var(--line);transition:transform .15s,background .2s,color .2s}
+.dbtn:active{transform:scale(.92)}
+.dbtn svg{width:22px;height:22px}
+.dbtn.on{background:var(--grad);color:#06121a;border-color:transparent;box-shadow:0 0 22px #83efd055}
+.dbtn.drag-on{color:var(--accent);border-color:#83efd066}
+
+/* ---------- Панель спец-клавиш (над клавиатурой, сверху экрана) ---------- */
+.kbar{position:fixed;z-index:9;left:50%;top:calc(10px + var(--st));transform:translate(-50%,-140%);display:flex;gap:6px;align-items:center;
+  padding:6px;border:1px solid var(--line-strong);border-radius:18px;background:var(--glass-strong);
+  -webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);box-shadow:0 14px 40px #000b;
+  opacity:0;pointer-events:none;transition:transform .28s cubic-bezier(.2,.9,.3,1),opacity .2s}
+.kbar.open{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+.kkey{min-width:40px;height:36px;padding:0 11px;border-radius:11px;background:#ffffff0f;border:1px solid var(--line);
+  font-size:12px;font-weight:700;color:#e6eef8;display:grid;place-items:center;letter-spacing:.02em}
+.kkey:active{background:#83efd02e;border-color:#83efd066;color:var(--accent)}
+.kdiv{width:1px;height:22px;background:var(--line-strong);margin:0 2px}
+
+/* скрытое поле ввода: должно быть «живым» для системной клавиатуры */
+.ghost-input{position:fixed;left:0;bottom:0;width:20px;height:20px;opacity:.01;border:0;outline:0;padding:0;margin:0;
+  background:transparent;color:transparent;caret-color:transparent;font-size:16px;z-index:1;-webkit-user-select:text;user-select:text}
+
+/* ---------- Меню ---------- */
+.sheet-backdrop{position:fixed;inset:0;z-index:20;background:#02050a99;opacity:0;pointer-events:none;transition:opacity .25s;
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.sheet-backdrop.open{opacity:1;pointer-events:auto}
+.sheet{position:fixed;z-index:21;top:0;right:0;bottom:0;width:min(340px,58vw);padding:calc(18px + var(--st)) calc(18px + var(--sr)) calc(16px + var(--sb)) 20px;
+  display:flex;flex-direction:column;gap:14px;overflow-y:auto;
+  background:linear-gradient(165deg,rgba(24,36,52,.96),rgba(8,12,19,.98));border-left:1px solid var(--line-strong);
+  box-shadow:-24px 0 70px #000c;transform:translateX(104%);transition:transform .3s cubic-bezier(.2,.9,.3,1)}
+.sheet.open{transform:none}
+.sheet-head{display:flex;flex-direction:column;align-items:flex-start;padding-bottom:6px}
+.sheet-head .logo{font-size:30px}
+.sheet-state{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:10px;letter-spacing:.16em;color:#9fb0c5}
+.rowbtn{display:flex;align-items:center;gap:13px;width:100%;padding:12px 13px;border-radius:15px;border:1px solid var(--line);
+  background:#ffffff08;text-align:left;transition:background .15s}
+.rowbtn:active{background:#ffffff14}
+.rowbtn .ic{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:#ffffff0d;color:var(--accent);flex:none}
+.rowbtn .ic svg{width:19px;height:19px}
+.rowbtn .tx{flex:1;min-width:0}
+.rowbtn .tx b{display:block;font-size:13px;font-weight:700}
+.rowbtn .tx small{display:block;font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.35}
+.switch{width:40px;height:24px;border-radius:99px;background:#ffffff1f;position:relative;flex:none;transition:background .2s}
+.switch::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s}
+.rowbtn.is-on .switch{background:var(--accent)}
+.rowbtn.is-on .switch::after{transform:translateX(16px);background:#06121a}
+.spacer{flex:1}
+.rowbtn.danger{border-color:#6a2c38;background:#2a111880}
+.rowbtn.danger .ic{background:#ff5d731f;color:var(--danger)}
+.rowbtn.danger .tx b{color:#ff9aa8}
+
+/* ---------- Оверлей подключения ---------- */
+.overlay{position:absolute;inset:0;z-index:7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;
+  padding:18px calc(18px + var(--sr)) 18px calc(18px + var(--sl));
+  background:radial-gradient(ellipse at 50% 0%,#1b3449 0%,#0a1019 55%,#05070b 100%);transition:opacity .35s}
+.overlay.hidden{opacity:0;pointer-events:none}
+.overlay .brand{display:flex;flex-direction:column;align-items:center;margin-bottom:6px}
+.spinner{width:38px;height:38px;border-radius:50%;border:3px solid #2c3b4e;border-top-color:var(--accent);border-right-color:var(--blue);animation:spin .85s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.errIcon{width:42px;height:42px;border-radius:50%;display:none;place-items:center;background:#2a1219;border:1px solid #63323c;color:var(--danger);font-size:21px;font-weight:800}
+.overlay.error .spinner,.overlay.idle .spinner{display:none}
+.overlay.error .errIcon{display:grid}
+.overlay strong{font-size:15px;letter-spacing:-.01em}
+.overlay .sub{font-size:12px;color:var(--muted);max-width:340px;line-height:1.5}
+.steps{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:6px 16px;max-width:520px}
+.steps li{display:flex;align-items:center;gap:8px;font-size:11px;color:#5f6f86;transition:color .25s}
+.steps li i{width:13px;height:13px;border-radius:50%;border:1.5px solid #3a4a60;display:grid;place-items:center;font-style:normal;font-size:8px;color:transparent}
+.steps li.active{color:#e4edf8}.steps li.active i{border-color:var(--accent);animation:blink 1.1s ease-in-out infinite}
+.steps li.done{color:#8fdcc6}.steps li.done i{background:var(--accent);border-color:var(--accent);color:#07131a}
+.overlay.error .steps,.overlay.idle .steps{display:none}
+.retry{display:none;margin-top:6px;border-radius:14px;padding:12px 24px;font-size:13px;font-weight:800;background:var(--grad);color:#07131a;box-shadow:0 10px 30px #83efd033}
+.overlay.error .retry,.overlay.idle .retry{display:block}
+
+/* ---------- Тост ---------- */
+.toast{position:fixed;z-index:12;left:50%;bottom:calc(22px + var(--sb));transform:translate(-50%,20px);padding:10px 16px;border-radius:99px;
+  border:1px solid var(--line-strong);background:var(--glass-strong);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+  font-size:12px;font-weight:650;letter-spacing:.02em;opacity:0;pointer-events:none;transition:opacity .2s,transform .25s;white-space:nowrap}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- Инструкция ---------- */
+.tutorial{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;padding:18px;background:#02050bd9;
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.tutorial.open{display:flex}
+.tutorial-card{width:min(100%,560px);max-height:100%;overflow:auto;padding:22px 24px;border:1px solid var(--line-strong);border-radius:24px;
+  background:linear-gradient(145deg,#172333,#0b111b);box-shadow:0 28px 90px #000b}
+.tutorial-kicker{font-size:9px;letter-spacing:.24em;color:var(--accent);font-weight:800}
+.tutorial-card h2{font-size:21px;margin:8px 0 12px;letter-spacing:-.03em}
+.tutorial-step{display:flex;gap:12px;align-items:flex-start;margin:11px 0}
+.tutorial-num{flex:0 0 28px;height:28px;border-radius:9px;background:#1b3c3a;color:var(--accent);display:grid;place-items:center;font-size:11px;font-weight:800}
+.tutorial-step p{margin:3px 0 0;font-size:12.5px;line-height:1.5;color:#d6e0ec}
+.tutorial-foot{display:flex;justify-content:flex-end;margin-top:14px}
+.tutorial-close{border-radius:12px;padding:11px 22px;background:var(--grad);color:#07131a;font-weight:800;font-size:13px}
+
+/* ---------- Заглушка вертикальной ориентации ---------- */
+.rotate{display:none;position:fixed;inset:0;z-index:100;align-items:center;justify-content:center;text-align:center;padding:28px;
+  background:radial-gradient(circle at 50% 30%,#1b3449 0%,#0a1019 55%,#05070b 100%)}
+.rotate-inner{display:flex;flex-direction:column;align-items:center;max-width:320px}
+.rotate-icon{width:92px;height:92px;margin:38px 0 26px;color:var(--accent);filter:drop-shadow(0 0 26px #83efd055);animation:tilt 2.6s ease-in-out infinite}
+@keyframes tilt{0%,15%{transform:rotate(0)}55%,80%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
+.rotate strong{font-size:22px;letter-spacing:-.02em;line-height:1.3}
+.rotate span{margin-top:10px;font-size:12.5px;line-height:1.6;color:#93a3b7}
+
+/* ===== Ориентация: вертикально — только заглушка ===== */
+@media (orientation:portrait){
+  .rotate{display:flex}
+  .statusbar,.dock,.kbar,.sheet,.sheet-backdrop,.tutorial,.overlay,.toast,.ghost-input{display:none!important}
+  /* видео не удаляем из раскладки (display:none может остановить декодер в WebView),
+     просто делаем невидимым и закрываем заглушкой */
+  .stage{visibility:hidden}
+}
+/* ===== Горизонтально — видео на весь экран и панель ===== */
+@media (orientation:landscape){
+  .rotate{display:none}
+  .stage{display:block}
+}
+@media (orientation:landscape) and (max-height:430px){
+  .dbtn{width:42px;height:42px}.dbtn svg{width:20px;height:20px}.dock{gap:8px;padding:7px}
+  .sheet{width:min(320px,52vw)}
+}
 </style>
 </head>
 <body>
-<main class="app">
-  <header class="top">
-    <div class="brand"><b>ELLIOT</b><small>REMOTE DESKTOP</small></div>
-    <div class="top-actions">
-      <div class="pill busy" id="pill"><i class="dot"></i><span id="pillText">ПОДКЛЮЧЕНИЕ</span></div>
-      <button class="help-btn" id="helpBtn" type="button" aria-label="Инструкция">?</button>
-    </div>
-  </header>
-  <section class="hero">
-    <div><h1>Ваш компьютер. На расстоянии касания.</h1>
-    <p>Защищённое подключение к рабочему столу. Коснитесь изображения, чтобы управлять компьютером.</p></div>
-  </section>
-  <section class="screen" id="screen">
-    <video id="video" autoplay playsinline muted></video>
-    <div class="corner"><i class="dot"></i><span id="videoState">STARTING</span></div>
-    <div class="stats-chip" aria-label="Статистика трансляции">
-      <span><b id="stFps">—</b> FPS</span><i></i>
-      <span><b id="stLatency">—</b> ms</span><i></i>
-      <span><b id="stRes">—</b></span>
-    </div>
-    <div class="overlay" id="overlay">
-      <div class="spinner"></div><div class="errIcon">!</div>
-      <strong id="ovTitle">Подключаемся к компьютеру…</strong>
-      <span class="sub" id="ovText">Подготавливаем защищённое соединение</span>
-      <ul class="steps" id="steps">
-        <li><i>✓</i>Подготовка соединения</li>
-        <li><i>✓</i>Запрос отправлен на ПК</li>
-        <li><i>✓</i>Ожидаем ответ ПК</li>
-        <li><i>✓</i>Установка видеосвязи</li>
-      </ul>
-      <button class="retry" id="retryBtn" type="button">Повторить подключение</button>
-    </div>
-  </section>
-  <div class="actions"><button class="btn" id="disconnectBtn" type="button" disabled>Отключиться</button></div>
-  <div class="notice" id="notice">Не закрывайте Mini App во время просмотра. Если на компьютере появится окно подтверждения — разрешите подключение.</div>
-  <footer class="footer">ELLIOT · PRIVATE REMOTE DESKTOP</footer>
-</main>
-<div class="mini-controls" id="miniControls">
-  <button class="mini-icon" id="keyboardToggle" type="button" aria-label="Открыть ввод текста">⌨</button>
-  <button class="mini-icon" id="dragToggle" type="button" aria-label="Режим перетаскивания">↗</button>
-  <button class="mini-icon disconnect-icon" id="miniDisconnect" type="button" aria-label="Отключиться">×</button>
-</div>
-<div class="keyboard-panel" id="keyboardPanel">
-  <input id="remoteText" type="text" maxlength="2000" autocomplete="off" autocapitalize="off" placeholder="Введите текст для компьютера">
-  <button id="sendRemoteText" type="button">Отправить</button>
-</div>
-<div class="orientation" id="orientation">
-  <div class="orientation-inner">
-    <svg class="rotate-icon" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      <path d="M23 9H12a4 4 0 0 0-4 4v25a4 4 0 0 0 4 4h17a4 4 0 0 0 4-4V26" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-      <path d="M21 54a25 25 0 0 0 35-23M43 10a25 25 0 0 0-35 23" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-      <path d="m43 4 1 12 12-1M21 60l-1-12-12 1" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    <strong>Переверните телефон для удобного просмотра</strong>
-    <span>Поверните устройство горизонтально — трансляция автоматически развернётся на весь экран.</span>
+
+<!-- Видео на весь экран -->
+<main class="stage" id="screen">
+  <video id="video" autoplay playsinline muted></video>
+  <div class="hold" id="hold"></div>
+
+  <div class="overlay" id="overlay">
+    <div class="brand"><div class="logo logo-xl">ELLIOT</div><div class="logo-sub">REMOTE DESKTOP</div></div>
+    <div class="spinner"></div><div class="errIcon">!</div>
+    <strong id="ovTitle">Подключаемся к компьютеру…</strong>
+    <span class="sub" id="ovText">Подготавливаем защищённое соединение</span>
+    <ul class="steps" id="steps">
+      <li><i>✓</i>Подготовка</li>
+      <li><i>✓</i>Запрос на ПК</li>
+      <li><i>✓</i>Ответ ПК</li>
+      <li><i>✓</i>Видеосвязь</li>
+    </ul>
+    <button class="retry" id="retryBtn" type="button">Подключиться</button>
   </div>
+</main>
+
+<!-- Статус -->
+<div class="statusbar busy" id="statusbar">
+  <span class="logo">ELLIOT</span><i class="dot"></i><span id="pillText">ПОДКЛЮЧЕНИЕ</span>
+  <span class="stats"><i></i><span><b id="stFps">—</b> FPS</span><i></i><span><b id="stLatency">—</b> ms</span><i></i><span><b id="stRes">—</b></span></span>
 </div>
+
+<!-- Панель: Клавиатура · Меню -->
+<nav class="dock" id="dock" aria-label="Управление">
+  <button class="dbtn" id="kbBtn" type="button" aria-label="Клавиатура">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="3"/><path d="M6.5 9.5h.01M10 9.5h.01M14 9.5h.01M17.5 9.5h.01M6.5 13.5h.01M17.5 13.5h.01M9 14.5h6"/></svg>
+  </button>
+  <button class="dbtn" id="menuBtn" type="button" aria-label="Меню">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+  </button>
+</nav>
+
+<!-- Спец-клавиши (видны, когда открыта клавиатура) -->
+<div class="kbar" id="kbar">
+  <button class="kkey" type="button" data-key="ESC">Esc</button>
+  <button class="kkey" type="button" data-key="TAB">Tab</button>
+  <button class="kkey" type="button" data-key="BACKSPACE">⌫</button>
+  <button class="kkey" type="button" data-key="DELETE">Del</button>
+  <button class="kkey" type="button" data-key="ENTER">↵</button>
+  <span class="kdiv"></span>
+  <button class="kkey" type="button" data-key="LEFT">←</button>
+  <button class="kkey" type="button" data-key="UP">↑</button>
+  <button class="kkey" type="button" data-key="DOWN">↓</button>
+  <button class="kkey" type="button" data-key="RIGHT">→</button>
+  <span class="kdiv"></span>
+  <button class="kkey" type="button" id="kbClose" aria-label="Скрыть клавиатуру">✕</button>
+</div>
+
+<!-- Скрытое поле для системной клавиатуры -->
+<input class="ghost-input" id="remoteText" type="text" inputmode="text" enterkeyhint="enter"
+       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Ввод текста на компьютер">
+
+<div class="toast" id="toast"></div>
+
+<!-- Меню -->
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<aside class="sheet" id="sheet" aria-label="Меню">
+  <div class="sheet-head">
+    <div class="logo">ELLIOT</div>
+    <div class="logo-sub" style="margin-top:7px">REMOTE DESKTOP</div>
+    <div class="sheet-state"><i class="dot" id="sheetDot"></i><span id="sheetState">ПОДКЛЮЧЕНИЕ</span></div>
+  </div>
+
+  <button class="rowbtn" id="dragToggle" type="button">
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg></span>
+    <span class="tx"><b>Перетаскивание</b><small>Палец сразу тянет объект. Без режима — удерживайте 1 с.</small></span>
+    <span class="switch"></span>
+  </button>
+  <button class="rowbtn" id="statsToggle" type="button">
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span>
+    <span class="tx"><b>Статистика</b><small>FPS, задержка, разрешение</small></span>
+    <span class="switch"></span>
+  </button>
+  <button class="rowbtn" id="helpBtn" type="button">
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5M12 16.6h.01"/></svg></span>
+    <span class="tx"><b>Инструкция</b><small>Жесты и управление</small></span>
+  </button>
+
+  <div class="spacer"></div>
+
+  <button class="rowbtn danger" id="disconnectBtn" type="button">
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v8M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></span>
+    <span class="tx"><b>Отключиться</b><small>Остановить трансляцию</small></span>
+  </button>
+</aside>
+
+<!-- Инструкция -->
 <div class="tutorial" id="tutorial" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
   <div class="tutorial-card">
     <div class="tutorial-kicker">ELLIOT · БЫСТРЫЙ СТАРТ</div>
     <h2 id="tutorialTitle">Управление компьютером</h2>
-    <div class="tutorial-step"><span class="tutorial-num">01</span><p>Ведите пальцем по изображению — курсор на компьютере будет двигаться за ним.</p></div>
-    <div class="tutorial-step"><span class="tutorial-num">02</span><p>Короткое касание — левый клик. Удержание 1 секунду без движения — правый клик.</p></div>
+    <div class="tutorial-step"><span class="tutorial-num">01</span><p>Ведите пальцем по изображению — курсор на компьютере двигается за ним. Короткое касание — левый клик.</p></div>
+    <div class="tutorial-step"><span class="tutorial-num">02</span><p>Касание двумя пальцами — правый клик.</p></div>
+    <div class="tutorial-step"><span class="tutorial-num">03</span><p>Перетаскивание файла: удерживайте палец на значке 1 секунду, затем ведите — отпустите, чтобы бросить.</p></div>
+    <div class="tutorial-step"><span class="tutorial-num">04</span><p>Кнопка с клавиатурой открывает системную клавиатуру телефона — всё, что вы печатаете, вводится на компьютере сразу.</p></div>
     <div class="tutorial-foot"><button class="tutorial-close" id="tutorialClose" type="button">Понятно</button></div>
   </div>
 </div>
+
+<!-- Заглушка: вертикальная ориентация -->
+<div class="rotate" id="rotate">
+  <div class="rotate-inner">
+    <div class="logo logo-xl">ELLIOT</div>
+    <div class="logo-sub">REMOTE DESKTOP</div>
+    <svg class="rotate-icon" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <rect x="20" y="6" width="24" height="42" rx="5" stroke="currentColor" stroke-width="2.6"/>
+      <path d="M30 42h4" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M12 54a24 24 0 0 0 40 0" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" opacity=".55"/>
+      <path d="m50 48 3 6-7 1" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>
+    </svg>
+    <strong>Переверните телефон</strong>
+    <span>Поверните устройство горизонтально — рабочий стол откроется на весь экран.</span>
+  </div>
+</div>
+
 <script>
 (() => {
   "use strict";
@@ -184,11 +320,11 @@ body{display:block}
   const ANSWER_TIMEOUT_MS = 90000;
   const CONNECT_TIMEOUT_MS = 30000;
   const ICE_GATHER_TIMEOUT_MS = 5000;
-  const TARGET_FPS = 30;
   const LONG_PRESS_MS = 1000;
   const TAP_MOVE_TOLERANCE_PX = 12;
   const CLICK_MIN_GAP_MS = 120;
   const MOVE_SEND_INTERVAL_MS = 45;
+  const TYPE_CHUNK = 400;
 
   const tg = window.Telegram && window.Telegram.WebApp;
   const $ = id => document.getElementById(id);
@@ -197,11 +333,17 @@ body{display:block}
 
   let cur = null;
   let controlOn = false;
+  let dragMode = false;
+  let cancelPointerInput = () => {};
 
   // ---------- UI ----------
   function setPill(text, mode) {
     $("pillText").textContent = text.toUpperCase();
-    $("pill").className = "pill" + (mode ? " " + mode : "");
+    $("sheetState").textContent = text.toUpperCase();
+    const cls = mode ? " " + mode : "";
+    $("statusbar").className = "statusbar" + cls;
+    $("sheetDot").className = "dot";
+    $("sheetDot").style.background = mode === "err" ? "var(--danger)" : (mode === "busy" ? "var(--blue)" : "var(--accent)");
   }
   function setStep(n) {
     stepEls.forEach((li, i) => { li.className = i < n ? "done" : (i === n ? "active" : ""); });
@@ -224,22 +366,21 @@ body{display:block}
     setPill("Отключено");
   }
   function hideOverlay() { overlay.classList.add("hidden"); }
-  function setNotice(text, warn) {
-    $("notice").textContent = text;
-    $("notice").className = "notice" + (warn ? " warn" : "");
-  }
-  function lockControl() {
-    controlOn = false;
-    screenEl.classList.remove("control");
-  }
-  function enableControl() {
-    controlOn = true;
-    screenEl.classList.add("control");
-  }
+  function lockControl() { controlOn = false; screenEl.classList.remove("control"); }
+  function enableControl() { controlOn = true; screenEl.classList.add("control"); }
   function resetStats() {
-    $("stFps").textContent = "—";
-    $("stLatency").textContent = "—";
-    $("stRes").textContent = "—";
+    $("stFps").textContent = "—"; $("stLatency").textContent = "—"; $("stRes").textContent = "—";
+  }
+  let toastTimer = 0;
+  function toast(text) {
+    const t = $("toast");
+    t.textContent = text;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 1600);
+  }
+  function haptic() {
+    try { if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred("medium"); else if (navigator.vibrate) navigator.vibrate(18); } catch {}
   }
   function humanError(err) {
     const m = String(err && err.message || err || "");
@@ -289,13 +430,17 @@ body{display:block}
     const width = vw * scale, height = vh * scale;
     return { left: rect.left + (rect.width - width) / 2, top: rect.top + (rect.height - height) / 2, width, height };
   }
-  function toFraction(clientX, clientY) {
+  // clamp=true: точка за пределами картинки прижимается к краю (нужно для перетаскивания).
+  function toFraction(clientX, clientY, clamp) {
     const r = videoContentRect();
-    if (!r || clientX < r.left || clientY < r.top || clientX > r.left + r.width || clientY > r.top + r.height) return null;
-    return { x: (clientX - r.left) / r.width, y: (clientY - r.top) / r.height };
+    if (!r) return null;
+    if (!clamp && (clientX < r.left || clientY < r.top || clientX > r.left + r.width || clientY > r.top + r.height)) return null;
+    const x = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+    const y = Math.min(1, Math.max(0, (clientY - r.top) / r.height));
+    return { x: Math.round(x * 10000) / 10000, y: Math.round(y * 10000) / 10000 };
   }
 
-  // ---------- WebRTC ----------
+  // ---------- WebRTC (без изменений) ----------
   function createPeer(s) {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     s.pc = pc;
@@ -420,7 +565,7 @@ body{display:block}
     moveInFlight = true;
     lastMoveSentAt = Date.now();
     try {
-      const res = await api("/api/mouse/move", {
+      await api("/api/mouse/move", {
         method: "POST", timeout: 2500,
         body: {
           sessionId: s.id,
@@ -429,9 +574,6 @@ body{display:block}
           initData: tg.initData
         }
       });
-      if (!res.ok) {
-        // Не показываем уведомление на каждую точку движения.
-      }
     } catch { /* временная потеря сети не должна превращать движение в клик */ }
     finally {
       moveInFlight = false;
@@ -446,49 +588,159 @@ body{display:block}
     flushMouseMove();
   }
 
+  // ---------- Перетаскивание: /api/mouse/drag  start | move | end ----------
+  // Все запросы идут строго по очереди (start → move… → end), «move» склеиваются до последней точки.
+  let dragChain = Promise.resolve();
+  let dragPendingMove = null;
+  let dragPumpQueued = false;
+
+  function dragPost(action, f) {
+    const s = cur;
+    if (!s || !s.alive || !s.playing) return Promise.resolve();
+    const body = { sessionId: s.id, action, initData: tg.initData };
+    if (f) { body.x = f.x; body.y = f.y; }
+    return api("/api/mouse/drag", { method: "POST", timeout: 5000, body }).catch(() => {});
+  }
+  function enqueueDrag(task) {
+    dragChain = dragChain.then(task).catch(() => {});
+    return dragChain;
+  }
+  function dragStart(f) { dragPendingMove = null; return enqueueDrag(() => dragPost("start", f)); }
+  function dragMoveTo(f) {
+    dragPendingMove = f;
+    if (dragPumpQueued) return;
+    dragPumpQueued = true;
+    enqueueDrag(async () => {
+      dragPumpQueued = false;
+      const m = dragPendingMove;
+      dragPendingMove = null;
+      if (m) { await dragPost("move", m); await sleep(MOVE_SEND_INTERVAL_MS); }
+    });
+  }
+  function dragEnd(f) { dragPendingMove = null; return enqueueDrag(() => dragPost("end", f || null)); }
+
+  // ---------- Жесты ----------
   (function initPointerControl() {
+    const hold = $("hold");
     let press = null;
-    let suppressContextMenuUntil = 0;
-    let dragMovePending = null;
-    let dragMoveInFlight = false;
-    let dragChain = Promise.resolve();
+    let lastPointerType = "touch";
 
-    function postDrag(action, f) {
-      const s = cur;
-      if (!s || !s.alive || !s.playing) return Promise.resolve();
-      return api("/api/mouse/button", {
-        method: "POST", timeout: 5000,
-        body: { sessionId: s.id, action, ...(f ? { x: f.x, y: f.y } : {}), initData: tg.initData }
-      }).then(res => { if (!res.ok) throw new Error("drag_http_" + res.status); }).catch(() => {});
+    function holdShow(x, y) {
+      hold.style.left = x + "px"; hold.style.top = y + "px";
+      hold.classList.remove("run", "grab");
+      void hold.offsetWidth;
+      hold.classList.add("run");
+    }
+    function holdMove(x, y) { hold.style.left = x + "px"; hold.style.top = y + "px"; }
+    function holdHide() { hold.classList.remove("run", "grab"); }
+
+    function beginDrag(p, atX, atY, silent) {
+      const f = toFraction(atX, atY, true);
+      if (!f) return false;
+      p.dragging = true;
+      hold.classList.remove("run");
+      hold.classList.add("grab");
+      holdMove(atX, atY);
+      dragStart(f);
+      if (!silent) { haptic(); toast("Перетаскивание"); }
+      return true;
+    }
+    function endDrag(p, x, y) {
+      holdHide();
+      p.dragging = false;
+      dragEnd(toFraction(x, y, true));
     }
 
-    function pumpDragMove() {
-      if (dragMoveInFlight || !dragMovePending) return;
-      const f = dragMovePending;
-      dragMovePending = null;
-      dragMoveInFlight = true;
-      dragChain = dragChain.then(() => postDrag("move", f)).finally(() => {
-        dragMoveInFlight = false;
-        pumpDragMove();
-      });
-    }
-    function queueDragMove(x, y) {
-      const f = toFraction(x, y);
-      if (!f) return;
-      dragMovePending = f;
-      pumpDragMove();
-    }
-    async function finishDrag(x, y) {
-      const f = toFraction(x, y);
-      if (f) dragMovePending = f;
-      while (dragMovePending || dragMoveInFlight) {
-        pumpDragMove();
-        await sleep(8);
+    video.addEventListener("pointerdown", e => {
+      lastPointerType = e.pointerType;
+      if (!controlOn || (e.pointerType === "mouse" && e.button !== 0)) return;
+      e.preventDefault();
+
+      // второй палец: касание двумя пальцами = правый клик
+      if (press && e.pointerId !== press.id) {
+        if (!press.dragging && !press.moved) {
+          press.two = true;
+          clearTimeout(press.timer);
+          holdHide();
+        }
+        return;
       }
-      await dragChain;
-      await postDrag("up");
-    }
-    function cancelPress(releaseCapture = false) {
+      if (press) cancelPress(true);
+
+      const p = press = { id: e.pointerId, x: e.clientX, y: e.clientY, lastX: e.clientX, lastY: e.clientY,
+        moved: false, dragging: false, two: false, cursorMoving: false, timer: 0 };
+      try { video.setPointerCapture(e.pointerId); } catch {}
+      holdShow(e.clientX, e.clientY);
+      // удержание 1 с без движения = «взять» объект
+      p.timer = setTimeout(() => {
+        if (press !== p || p.moved || p.two || p.dragging) return;
+        beginDrag(p, p.lastX, p.lastY, false);
+      }, LONG_PRESS_MS);
+    }, { passive: false });
+
+    video.addEventListener("pointermove", e => {
+      if (!press || e.pointerId !== press.id) return;
+      e.preventDefault();
+      const p = press;
+      p.lastX = e.clientX; p.lastY = e.clientY;
+
+      if (p.two) {
+        if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > TAP_MOVE_TOLERANCE_PX * 2) p.moved = true;
+        return;
+      }
+      if (p.dragging) {
+        const f = toFraction(e.clientX, e.clientY, true);
+        if (f) dragMoveTo(f);
+        holdMove(e.clientX, e.clientY);
+        return;
+      }
+      if (!p.moved && Math.hypot(e.clientX - p.x, e.clientY - p.y) > TAP_MOVE_TOLERANCE_PX) {
+        p.moved = true;
+        clearTimeout(p.timer);
+        holdHide();
+        if (dragMode) {
+          // режим перетаскивания: берём объект там, где палец коснулся экрана
+          if (beginDrag(p, p.x, p.y, true)) {
+            const f = toFraction(e.clientX, e.clientY, true);
+            if (f) dragMoveTo(f);
+            holdMove(e.clientX, e.clientY);
+          }
+        } else {
+          p.cursorMoving = true;
+          queueMouseMove(e.clientX, e.clientY);
+        }
+      } else if (p.cursorMoving) {
+        queueMouseMove(e.clientX, e.clientY);
+      }
+    }, { passive: false });
+
+    video.addEventListener("pointerup", e => {
+      if (!press || e.pointerId !== press.id) return;
+      e.preventDefault();
+      const p = press;
+      p.lastX = e.clientX; p.lastY = e.clientY;
+      clearTimeout(p.timer);
+      press = null;
+      try { if (video.hasPointerCapture(p.id)) video.releasePointerCapture(p.id); } catch {}
+
+      if (p.dragging) { endDrag(p, e.clientX, e.clientY); return; }
+      holdHide();
+      if (p.two) {
+        if (!p.moved) {
+          const f = toFraction(p.x, p.y);
+          if (f) sendClick(f.x, f.y, "right", p.x, p.y);
+        }
+        return;
+      }
+      if (p.moved || p.cursorMoving) {
+        if (p.cursorMoving) queueMouseMove(p.lastX, p.lastY);
+        return;
+      }
+      const f = toFraction(p.x, p.y);
+      if (f) sendClick(f.x, f.y, "left", p.x, p.y);
+    }, { passive: false });
+
+    function cancelPress(releaseCapture) {
       const p = press;
       if (!p) return;
       clearTimeout(p.timer);
@@ -496,90 +748,186 @@ body{display:block}
       if (releaseCapture) {
         try { if (video.hasPointerCapture(p.id)) video.releasePointerCapture(p.id); } catch {}
       }
-      if (p.dragging || p.dragStarting) Promise.resolve(p.dragStartPromise).then(() => postDrag("up"));
+      if (p.dragging) endDrag(p, p.lastX, p.lastY); else holdHide();
     }
-
-    video.addEventListener("pointerdown", e => {
-      if (!controlOn || (e.pointerType === "mouse" && e.button !== 0)) return;
-      e.preventDefault();
-      if (press) cancelPress(true);
-      const p = press = { id:e.pointerId, x:e.clientX, y:e.clientY, lastX:e.clientX, lastY:e.clientY,
-        moved:false, handled:false, dragging:false, dragStarting:false, timer:0 };
-      try { video.setPointerCapture(e.pointerId); } catch {}
-      p.timer = setTimeout(() => {
-        if (press !== p || p.moved || p.dragging) return;
-        p.handled = true;
-        suppressContextMenuUntil = Date.now() + 1200;
-        const f = toFraction(p.lastX, p.lastY);
-        if (f) sendClick(f.x, f.y, "right", p.lastX, p.lastY);
-      }, LONG_PRESS_MS);
-    }, { passive:false });
-
-    video.addEventListener("pointermove", e => {
-      if (!press || e.pointerId !== press.id) return;
-      e.preventDefault();
-      const p = press; p.lastX=e.clientX; p.lastY=e.clientY;
-      if (!p.moved && Math.hypot(e.clientX-p.x,e.clientY-p.y) > TAP_MOVE_TOLERANCE_PX) {
-        p.moved = true; clearTimeout(p.timer);
-        if (dragMode) {
-          p.dragStarting = true;
-          const start = toFraction(p.x,p.y);
-          p.dragStartPromise = start ? postDrag("down",start) : Promise.resolve();
-          p.dragStartPromise.then(() => {
-            p.dragStarting = false;
-            if (press === p && p.moved) { p.dragging = true; queueDragMove(p.lastX,p.lastY); }
-            else if (p.dragging) postDrag("up");
-          });
-        } else {
-          p.cursorMoving = true;
-          queueMouseMove(e.clientX,e.clientY);
-        }
-      } else if (p.dragging) queueDragMove(e.clientX,e.clientY);
-      else if (p.cursorMoving) queueMouseMove(e.clientX,e.clientY);
-    }, { passive:false });
-
-    video.addEventListener("pointerup", async e => {
-      if (!press || e.pointerId !== press.id) return;
-      e.preventDefault();
-      const p=press; p.lastX=e.clientX; p.lastY=e.clientY; clearTimeout(p.timer); press=null;
-      try { if (video.hasPointerCapture(p.id)) video.releasePointerCapture(p.id); } catch {}
-      if (p.handled) return;
-      if (p.dragStarting || p.dragging) {
-        await p.dragStartPromise;
-        await finishDrag(p.lastX,p.lastY);
-        return;
-      }
-      if (p.moved || p.cursorMoving) {
-        if (p.cursorMoving) queueMouseMove(p.lastX,p.lastY);
-        return;
-      }
-      const f=toFraction(p.x,p.y);
-      if (f) sendClick(f.x,f.y,"left",p.x,p.y);
-    }, { passive:false });
+    cancelPointerInput = () => cancelPress(true);
 
     video.addEventListener("pointercancel", () => cancelPress(true));
+    // Системное меню long-press на телефоне не должно быть правым кликом.
     video.addEventListener("contextmenu", e => {
-      e.preventDefault(); if (!controlOn) return;
-      const handled=Date.now()<suppressContextMenuUntil;
-      cancelPress(true); if (handled) return;
-      const f=toFraction(e.clientX,e.clientY);
-      if (f) sendClick(f.x,f.y,"right",e.clientX,e.clientY);
+      e.preventDefault();
+      if (!controlOn || lastPointerType !== "mouse") return;
+      const f = toFraction(e.clientX, e.clientY);
+      if (f) sendClick(f.x, f.y, "right", e.clientX, e.clientY);
     });
   })();
 
-  // ---------- Ориентация и обучение ----------
+  // ---------- Клавиатура: отправляем только новые символы ----------
+  const kbInput = $("remoteText"), kbBtn = $("kbBtn"), kbar = $("kbar");
+  let kbPrev = "";
+  let kbChain = Promise.resolve();
+  let kbComposing = false;
+
+  function kbEnqueue(task) { kbChain = kbChain.then(task).catch(() => {}); }
+  function liveSession() { const s = cur; return s && s.alive && s.playing ? s : null; }
+
+  function sendKey(key, count = 1) {
+    kbEnqueue(() => {
+      const s = liveSession();
+      if (!s) return;
+      return api("/api/keyboard/key", { method: "POST", timeout: 5000,
+        body: { sessionId: s.id, key, count, initData: tg.initData } });
+    });
+  }
+  function sendText(text) {
+    for (let i = 0; i < text.length; i += TYPE_CHUNK) {
+      let end = Math.min(text.length, i + TYPE_CHUNK);
+      // не рвём суррогатную пару посередине
+      if (end < text.length && /[\uD800-\uDBFF]/.test(text[end - 1])) end--;
+      const part = text.slice(i, end);
+      i = end - TYPE_CHUNK;
+      kbEnqueue(() => {
+        const s = liveSession();
+        if (!s) return;
+        return api("/api/keyboard/type", { method: "POST", timeout: 5000,
+          body: { sessionId: s.id, text: part, initData: tg.initData } });
+      });
+    }
+  }
+
+  // Поле никогда не бывает пустым: в нём всегда лежит невидимый символ-«якорь».
+  // Так Backspace на пустом вводе тоже вызывает событие input (Android-клавиатуры иначе молчат).
+  const SENT = "\u200b";
+  function resetKeyboardBuffer() {
+    kbInput.value = SENT;
+    kbPrev = SENT;
+    try { kbInput.setSelectionRange(SENT.length, SENT.length); } catch {}
+  }
+
+  // Сравниваем прошлое и новое значение поля: отправляем «минус N символов» и «плюс новый хвост».
+  function syncKeyboardDelta() {
+    const now = kbInput.value;
+    const max = Math.min(kbPrev.length, now.length);
+    let i = 0;
+    while (i < max && kbPrev.charCodeAt(i) === now.charCodeAt(i)) i++;
+    if (i > 0 && /[\uD800-\uDBFF]/.test(kbPrev[i - 1])) i--;   // общий префикс не должен разрезать эмодзи
+    const removed = Array.from(kbPrev.slice(i)).length;
+    const added = now.slice(i).split(SENT).join("");
+    kbPrev = now;
+    if (removed > 0) sendKey("BACKSPACE", removed);
+    if (added) sendText(added);
+    // якорь стёрт — возвращаем его (без отправки на ПК)
+    if (!kbComposing && !now.startsWith(SENT)) resetKeyboardBuffer();
+  }
+
+  kbInput.addEventListener("compositionstart", () => { kbComposing = true; });
+  kbInput.addEventListener("compositionend", () => {
+    kbComposing = false;
+    syncKeyboardDelta();
+    if (kbInput.value.length > 80) resetKeyboardBuffer();
+  });
+  kbInput.addEventListener("input", () => {
+    syncKeyboardDelta();
+    if (!kbComposing && kbInput.value.length > 80) resetKeyboardBuffer();
+  });
+  kbInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); sendKey("ENTER", 1); }
+    else if (e.key === "Tab") { e.preventDefault(); sendKey("TAB", 1); }
+    else if (e.key === "Escape") { e.preventDefault(); sendKey("ESC", 1); }
+  });
+
+  function setKeyboardUi(open) {
+    kbBtn.classList.toggle("on", open);
+    kbar.classList.toggle("open", open);
+  }
+  function openKeyboard() {
+    if (!liveSession()) { toast("Нет соединения с ПК"); return; }
+    resetKeyboardBuffer();
+    kbInput.focus({ preventScroll: true });     // фокус внутри обработчика касания — иначе iOS не покажет клавиатуру
+    try { kbInput.setSelectionRange(kbInput.value.length, kbInput.value.length); } catch {}
+    setKeyboardUi(true);
+  }
+  function closeKeyboard() {
+    kbInput.blur();
+    setKeyboardUi(false);
+    kbInput.value = ""; kbPrev = "";
+  }
+  kbInput.addEventListener("blur", () => {
+    // клавиатуру закрыли системной кнопкой «Готово»/«Назад»
+    setTimeout(() => { if (document.activeElement !== kbInput) setKeyboardUi(false); }, 120);
+  });
+  // Кнопки не должны отбирать фокус у поля — иначе клавиатура мигает.
+  [kbBtn, kbar].forEach(el => el.addEventListener("mousedown", e => e.preventDefault()));
+  kbBtn.addEventListener("click", () => {
+    if (document.activeElement === kbInput) closeKeyboard(); else openKeyboard();
+  });
+  $("kbClose").addEventListener("click", closeKeyboard);
+  kbar.querySelectorAll("[data-key]").forEach(b =>
+    b.addEventListener("click", () => sendKey(b.dataset.key, 1)));
+
+  // iOS при показе клавиатуры может сдвинуть страницу — возвращаем на место.
+  if (window.visualViewport) {
+    const reset = () => window.scrollTo(0, 0);
+    window.visualViewport.addEventListener("resize", reset);
+    window.visualViewport.addEventListener("scroll", reset);
+  }
+
+  // ---------- Меню и панель ----------
+  const sheet = $("sheet"), backdrop = $("sheetBackdrop"), dock = $("dock");
+  function openSheet() { sheet.classList.add("open"); backdrop.classList.add("open"); }
+  function closeSheet() { sheet.classList.remove("open"); backdrop.classList.remove("open"); }
+  $("menuBtn").addEventListener("click", () => (sheet.classList.contains("open") ? closeSheet() : openSheet()));
+  backdrop.addEventListener("click", closeSheet);
+
+  $("dragToggle").addEventListener("click", () => {
+    dragMode = !dragMode;
+    $("dragToggle").classList.toggle("is-on", dragMode);
+    $("menuBtn").classList.toggle("drag-on", dragMode);
+    toast(dragMode ? "Режим перетаскивания включён" : "Режим перетаскивания выключен");
+  });
+  $("statsToggle").addEventListener("click", () => {
+    const on = document.body.classList.toggle("show-stats");
+    $("statsToggle").classList.toggle("is-on", on);
+  });
+
+  // панель приглушается, когда ею не пользуются
+  let dockTimer = 0;
+  function wakeDock() {
+    dock.classList.remove("idle");
+    clearTimeout(dockTimer);
+    dockTimer = setTimeout(() => dock.classList.add("idle"), 3500);
+  }
+  ["pointerdown", "touchstart"].forEach(ev => dock.addEventListener(ev, wakeDock, { passive: true }));
+  video.addEventListener("pointerdown", wakeDock, { passive: true });
+  wakeDock();
+
+  // ---------- Инструкция ----------
   const tutorial = $("tutorial");
   function openTutorial() {
+    closeSheet();
     tutorial.classList.add("open");
-    try { localStorage.setItem("elliot_tutorial_seen", "1"); } catch {}
+    try { localStorage.setItem("elliot_tutorial_v2", "1"); } catch {}
   }
   function closeTutorial() { tutorial.classList.remove("open"); }
   $("helpBtn").addEventListener("click", openTutorial);
   $("tutorialClose").addEventListener("click", closeTutorial);
   tutorial.addEventListener("click", e => { if (e.target === tutorial) closeTutorial(); });
-  try {
-    if (!localStorage.getItem("elliot_tutorial_seen")) openTutorial();
-  } catch {}
+  try { if (!localStorage.getItem("elliot_tutorial_v2")) openTutorial(); } catch {}
+
+  // ---------- Ориентация ----------
+  const mqPortrait = window.matchMedia("(orientation: portrait)");
+  function onOrientation() {
+    if (mqPortrait.matches) {
+      cancelPointerInput();      // отпускаем зажатую кнопку мыши, если палец был на экране
+      closeSheet();
+      closeKeyboard();
+      closeTutorial();
+    } else {
+      video.play().catch(() => {});
+    }
+  }
+  if (mqPortrait.addEventListener) mqPortrait.addEventListener("change", onOrientation);
+  else if (mqPortrait.addListener) mqPortrait.addListener(onOrientation);
 
   // ---------- Жизненный цикл ----------
   function teardown(s) {
@@ -596,6 +944,8 @@ body{display:block}
   function fail(s, err) {
     if (!s || !s.alive) return;
     teardown(s);
+    lockControl();
+    closeKeyboard();
     showError(humanError(err));
   }
 
@@ -610,10 +960,8 @@ body{display:block}
 
     resetStats();
     lockControl();
-    $("disconnectBtn").disabled = false;
-    setNotice("Не закрывайте Mini App во время просмотра. Если на компьютере появится окно подтверждения — разрешите подключение.", false);
+    overlay.classList.remove("hidden");
     setPill("Подключение", "busy");
-    $("videoState").textContent = "CONNECTING";
     showLoading("Подключаемся к компьютеру…", "Подготавливаем защищённое соединение");
     setStep(0);
 
@@ -631,7 +979,7 @@ body{display:block}
       if (!s.alive) return;
 
       setStep(2);
-      showLoading("Ждём ответ компьютера…", "Если на ПК появилось окно подтверждения — разрешите подключение");
+      showLoading("Ждём ответ компьютера…", "Это занимает несколько секунд");
       setPill("Ожидание ПК", "busy");
       const answer = await pollAnswer(s);
       if (!s.alive || !answer) return;
@@ -658,56 +1006,42 @@ body{display:block}
     setStep(4);
     hideOverlay();
     setPill("Подключено");
-    $("videoState").textContent = "LIVE · H.264";
     enableControl();
     startStats(s);
+    wakeDock();
   });
 
   function disconnect() {
     const s = cur;
     if (!s) return;
-    try { api("/api/mouse/button", { method:"POST", timeout:2000, body:{ sessionId:s.id, action:"up", initData:tg.initData } }).catch(() => {}); } catch {}
-    sendStop(s);
-    teardown(s);
-    resetStats();
-    showIdle("Трансляция отключена", "Подключение остановлено.");
+    closeSheet();
+    cancelPointerInput();      // если кнопка мыши была зажата — отправится drag/end
+    closeKeyboard();
+    lockControl();
+    // небольшая пауза, чтобы drag/end ушёл раньше stop
+    setTimeout(() => {
+      sendStop(s);
+      teardown(s);
+      resetStats();
+      overlay.classList.remove("hidden");
+      showIdle("Трансляция отключена", "Подключение остановлено.");
+    }, 150);
   }
 
   $("retryBtn").addEventListener("click", connect);
   $("disconnectBtn").addEventListener("click", disconnect);
-  $("miniDisconnect").addEventListener("click", disconnect);
-  $("keyboardToggle").addEventListener("click", () => {
-    $("keyboardPanel").classList.toggle("open");
-    if ($("keyboardPanel").classList.contains("open")) $("remoteText").focus();
-  });
-  $("dragToggle").addEventListener("click", () => {
-    dragMode = !dragMode;
-    $("dragToggle").classList.toggle("active", dragMode);
-  });
-  async function sendRemoteText() {
-    const value = $("remoteText").value;
-    if (!value || !cur || !cur.alive || !cur.playing) return;
-    try {
-      const result = await api("/api/keyboard/text", {
-        method:"POST", timeout:5000,
-        body:{ sessionId:cur.id, text:value, initData:tg.initData }
-      });
-      if (result.ok) $("remoteText").value = "";
-    } catch {}
-  }
-  $("sendRemoteText").addEventListener("click", sendRemoteText);
-  $("remoteText").addEventListener("keydown", e => {
-    if (e.key === "Enter") { e.preventDefault(); sendRemoteText(); }
-  });
 
-  window.addEventListener("pagehide", () => { if (cur && cur.alive) sendStop(cur); });
+  window.addEventListener("pagehide", () => {
+    cancelPointerInput();
+    if (cur && cur.alive) sendStop(cur);
+  });
 
   // ---------- Автозапуск ----------
   try {
     if (tg) {
       tg.ready(); tg.expand();
-      if (tg.setHeaderColor) tg.setHeaderColor("#080b12");
-      if (tg.setBackgroundColor) tg.setBackgroundColor("#080b12");
+      if (tg.setHeaderColor) tg.setHeaderColor("#05070b");
+      if (tg.setBackgroundColor) tg.setBackgroundColor("#05070b");
       if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
     }
   } catch {}
