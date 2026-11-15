@@ -82,6 +82,28 @@ video{width:100%;height:100%;object-fit:contain;display:block;background:#020408
  .corner{left:max(12px,env(safe-area-inset-left));top:max(10px,env(safe-area-inset-top))}
  .stats-chip{right:max(12px,env(safe-area-inset-right));top:max(10px,env(safe-area-inset-top))}
 }
+
+/* Минимальный полноэкранный интерфейс: оставляем только клавиатуру и отключение. */
+html,body{width:100%;height:100%;min-height:100%;padding:0!important;margin:0;overflow:hidden;background:#000}
+body{display:block}
+.app{width:100vw;max-width:none;height:100dvh;min-height:0;padding:0!important;margin:0;display:block}
+.top,.hero,.actions,.notice,.footer,.corner,.stats-chip,.orientation,.tutorial{display:none!important}
+.screen{position:fixed;inset:0;width:100vw;height:100dvh;min-height:0;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none;background:#000}
+#video{width:100%;height:100%;object-fit:contain;touch-action:none}
+.overlay{background:#000d;gap:8px}
+.overlay strong{font-size:13px}
+.overlay .sub,.overlay .steps{display:none}
+.overlay.error .sub{display:block;max-width:260px}
+.overlay .retry{font-size:12px;padding:10px 16px}
+.mini-controls{position:fixed;z-index:10;right:max(12px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:9px;opacity:.72}
+.mini-controls:active{opacity:1}
+.mini-icon{width:43px;height:43px;border-radius:50%;border:1px solid #ffffff45;background:#101923d9;color:#fff;font-size:19px;display:grid;place-items:center;backdrop-filter:blur(10px);box-shadow:0 4px 18px #0008;cursor:pointer}
+.disconnect-icon{font-size:25px;color:#ff9aa6}
+#dragToggle.active{background:#83efd0;color:#07131a;border-color:#83efd0;opacity:1}
+.keyboard-panel{position:fixed;z-index:11;left:12px;right:112px;bottom:max(14px,env(safe-area-inset-bottom));display:none;gap:7px;padding:7px;border:1px solid #ffffff35;border-radius:15px;background:#101923ef;backdrop-filter:blur(12px)}
+.keyboard-panel.open{display:flex}
+.keyboard-panel input{min-width:0;flex:1;border:0;outline:0;background:#202d3b;color:#fff;border-radius:10px;padding:0 11px;font-size:16px}
+.keyboard-panel button{border:0;border-radius:10px;background:#83efd0;color:#07131a;font-weight:800;padding:0 13px;font-size:12px}
 </style>
 </head>
 <body>
@@ -122,6 +144,15 @@ video{width:100%;height:100%;object-fit:contain;display:block;background:#020408
   <div class="notice" id="notice">Не закрывайте Mini App во время просмотра. Если на компьютере появится окно подтверждения — разрешите подключение.</div>
   <footer class="footer">ELLIOT · PRIVATE REMOTE DESKTOP</footer>
 </main>
+<div class="mini-controls" id="miniControls">
+  <button class="mini-icon" id="keyboardToggle" type="button" aria-label="Открыть ввод текста">⌨</button>
+  <button class="mini-icon" id="dragToggle" type="button" aria-label="Режим перетаскивания">↗</button>
+  <button class="mini-icon disconnect-icon" id="miniDisconnect" type="button" aria-label="Отключиться">×</button>
+</div>
+<div class="keyboard-panel" id="keyboardPanel">
+  <input id="remoteText" type="text" maxlength="2000" autocomplete="off" autocapitalize="off" placeholder="Введите текст для компьютера">
+  <button id="sendRemoteText" type="button">Отправить</button>
+</div>
 <div class="orientation" id="orientation">
   <div class="orientation-inner">
     <svg class="rotate-icon" viewBox="0 0 64 64" fill="none" aria-hidden="true">
@@ -142,7 +173,6 @@ video{width:100%;height:100%;object-fit:contain;display:block;background:#020408
     <div class="tutorial-foot"><button class="tutorial-close" id="tutorialClose" type="button">Понятно</button></div>
   </div>
 </div>
-
 <script>
 (() => {
   "use strict";
@@ -186,253 +216,18 @@ video{width:100%;height:100%;object-fit:contain;display:block;background:#020408
     $("ovTitle").textContent = "Не удалось подключиться";
     $("ovText").textContent = message;
     setPill("Ошибка", "err");
-    $("videoState").textContent = "OFFLINE";
-    $("disconnectBtn").disabled = true;
-    lockControl();
-    setNotice(message, true);
   }
   function showIdle(title, text) {
     overlay.className = "overlay idle";
     $("ovTitle").textContent = title;
-    $("ovText").textContent = text;
-    setPill("Отключено", "err");
-    $("videoState").textContent = "OFFLINE";
-    $("disconnectBtn").disabled = true;
-    lockControl();
-    setNotice("Трансляция остановлена. Нажмите «Повторить», чтобы подключиться снова.", false);
+    $("ovText").textContent = text || "";
+    setPill("Отключено");
   }
-  function hideOverlay() { overlay.className = "overlay hidden"; }
+  function hideOverlay() { overlay.classList.add("hidden"); }
   function setNotice(text, warn) {
-    const n = $("notice");
-    n.textContent = text;
-    n.classList.toggle("warn", !!warn);
+    $("notice").textContent = text;
+    $("notice").className = "notice" + (warn ? " warn" : "");
   }
-  function resetStats() {
-    $("stRes").textContent = "—";
-    $("stLatency").textContent = "—";
-    const f = $("stFps"); f.textContent = "—"; f.className = "";
-  }
-
-  const ERRORS = {
-    no_init_data: "Откройте эту страницу из Telegram (кнопка Mini App в боте): данные авторизации Telegram отсутствуют.",
-    missing_init_data: "Откройте эту страницу из Telegram (кнопка Mini App в боте): данные авторизации Telegram отсутствуют.",
-    missing_hash: "Не удалось подтвердить авторизацию Telegram. Закройте и снова откройте Mini App.",
-    invalid_init_data_hash: "Не удалось подтвердить авторизацию Telegram. Закройте и снова откройте Mini App.",
-    bad_init_data: "Не удалось подтвердить авторизацию Telegram. Закройте и снова откройте Mini App.",
-    missing_telegram_user: "Не удалось подтвердить авторизацию Telegram. Закройте и снова откройте Mini App.",
-    init_data_expired: "Данные Telegram устарели. Закройте и снова откройте Mini App.",
-    no_active_device: "К вашему Telegram-аккаунту не привязано активное устройство. Активируйте токен командой /auth в боте.",
-    declined: "Подключение отклонено на компьютере.",
-    agent_error: "Агент на компьютере не смог запустить трансляцию. Подробности — в streaming.log на ПК.",
-    agent_timeout: "Компьютер не ответил за 90 секунд. Убедитесь, что ELLIOT запущен на ПК, и подтвердите запрос в окне на компьютере.",
-    session_not_found: "Сессия истекла или заменена новой. Нажмите «Повторить».",
-    session_conflict: "Конфликт сессий. Нажмите «Повторить».",
-    network: "Нет связи с сервером. Проверьте интернет и туннель.",
-    webrtc_failed: "Не удалось установить видеосоединение (возможно, мешает NAT или фаервол). Повторите попытку.",
-    connect_timeout: "Видеосоединение не установилось за 30 секунд. Повторите попытку.",
-    no_video: "Соединение установлено, но видео не пришло. Повторите попытку.",
-    no_webrtc: "Этот браузер не поддерживает WebRTC."
-  };
-  function humanError(e) {
-    const code = (e && e.message) ? e.message : String(e);
-    if (ERRORS[code]) return ERRORS[code];
-    if (/^http_\d+$/.test(code)) return "Ошибка сервера (HTTP " + code.slice(5) + "). Повторите попытку.";
-    return "Ошибка: " + code;
-  }
-
-  // ---------- Утилиты ----------
-  function uuid() {
-    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-    const b = new Uint8Array(16); crypto.getRandomValues(b);
-    b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
-    const h = Array.from(b, x => x.toString(16).padStart(2, "0")).join("");
-    return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
-  }
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-  async function api(path, { method = "GET", body, timeout = 10000, keepalive = false } = {}) {
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), timeout);
-    try {
-      const headers = { "X-Telegram-Init-Data": tg.initData, "ngrok-skip-browser-warning": "1" };
-      if (body) headers["Content-Type"] = "application/json";
-      return await fetch(API_BASE + path, {
-        method, headers, cache: "no-store", keepalive,
-        body: body ? JSON.stringify(body) : undefined,
-        signal: ctl.signal
-      });
-    } finally { clearTimeout(timer); }
-  }
-  async function errorCode(res) {
-    try { const j = await res.json(); if (j && j.error) return j.error; } catch {}
-    return "http_" + res.status;
-  }
-  const isNetworkError = e => e && (e.name === "AbortError" || e instanceof TypeError);
-
-  // ---------- WebRTC ----------
-  function waitIceComplete(pc) {
-    if (pc.iceGatheringState === "complete") return Promise.resolve();
-    return new Promise(resolve => {
-      const done = () => { clearTimeout(timer); pc.removeEventListener("icegatheringstatechange", check); resolve(); };
-      const check = () => { if (pc.iceGatheringState === "complete") done(); };
-      const timer = setTimeout(done, ICE_GATHER_TIMEOUT_MS);
-      pc.addEventListener("icegatheringstatechange", check);
-    });
-  }
-
-  function preferH264(transceiver) {
-    try {
-      const caps = RTCRtpReceiver.getCapabilities("video");
-      if (!caps || !transceiver.setCodecPreferences) return;
-      const isH264 = c => /video\/h264/i.test(c.mimeType);
-      const h264 = caps.codecs.filter(isH264);
-      if (!h264.length) return;
-      transceiver.setCodecPreferences([...h264, ...caps.codecs.filter(c => !isH264(c))]);
-    } catch {}
-  }
-
-  function createPeer(s) {
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS, bundlePolicy: "max-bundle" });
-    const tr = pc.addTransceiver("video", { direction: "recvonly" });
-    preferH264(tr);
-
-    pc.ontrack = e => {
-      video.srcObject = (e.streams && e.streams[0]) || new MediaStream([e.track]);
-      video.play().catch(() => {});
-    };
-    pc.onconnectionstatechange = () => {
-      if (!s.alive) return;
-      const st = pc.connectionState;
-      if (st === "connected") {
-        clearTimeout(s.disconnectTimer);
-        if (s.playing) setPill("Подключено");
-      } else if (st === "disconnected") {
-        setPill("Нестабильно", "busy");
-        clearTimeout(s.disconnectTimer);
-        s.disconnectTimer = setTimeout(() => { if (s.alive && pc.connectionState === "disconnected") fail(s, new Error("webrtc_failed")); }, 8000);
-      } else if (st === "failed") {
-        fail(s, new Error("webrtc_failed"));
-      }
-    };
-    return pc;
-  }
-
-  async function makeOffer(s) {
-    const offer = await s.pc.createOffer();
-    await s.pc.setLocalDescription(offer);
-    await waitIceComplete(s.pc);
-    const sdp = s.pc.localDescription && s.pc.localDescription.sdp;
-    if (!sdp) throw new Error("Не удалось создать SDP Offer");
-    return sdp;
-  }
-
-  async function postOffer(s, sdp) {
-    for (let i = 0; i < 3 && s.alive; i++) {
-      try {
-        const res = await api("/api/signal/offer", {
-          method: "POST", timeout: 10000,
-          body: { sessionId: s.id, sdp, initData: tg.initData }
-        });
-        if (res.ok) { s.started = true; return; }
-        throw new Error(await errorCode(res));
-      } catch (e) {
-        if (!isNetworkError(e)) throw e;
-        await sleep(800);
-      }
-    }
-    if (s.alive) throw new Error("network");
-  }
-
-  async function pollAnswer(s) {
-    const started = Date.now();
-    let netFails = 0;
-    while (s.alive) {
-      if (Date.now() - started > ANSWER_TIMEOUT_MS) throw new Error("agent_timeout");
-      try {
-        const res = await api("/api/signal/answer?sessionId=" + encodeURIComponent(s.id), { timeout: 8000 });
-        netFails = 0;
-        if (res.status === 200) {
-          const j = await res.json();
-          if (j.error) throw new Error(j.error);
-          if (j.sdp) return j.sdp;
-        } else if (res.status === 204) {
-          if (res.headers.get("X-Signal-State") === "agent_has_offer") {
-            showLoading("ПК принял запрос", "Компьютер подтвердил подключение, согласуем видеопоток…");
-          } else {
-            showLoading("Ждём ответ компьютера…", "Если на ПК появилось окно подтверждения — разрешите подключение");
-          }
-        } else {
-          throw new Error(await errorCode(res));
-        }
-      } catch (e) {
-        if (isNetworkError(e)) { if (++netFails >= 6) throw new Error("network"); }
-        else throw e;
-      }
-      await sleep(POLL_MS);
-    }
-    return null;
-  }
-
-  // ---------- Статистика ----------
-  function startStats(s) {
-    clearInterval(s.statsTimer);
-    s.prev = null; s.lowSeconds = 0;
-    s.statsTimer = setInterval(async () => {
-      if (!s.alive || !s.pc) return;
-      try {
-        const report = await s.pc.getStats();
-        let inbound = null;
-        report.forEach(r => {
-          if (r.type === "inbound-rtp" && (r.kind === "video" || r.mediaType === "video")) inbound = r;
-        });
-        if (!inbound) return;
-
-        const now = performance.now();
-        let fps = inbound.framesPerSecond;
-        let rtt = null;
-        if (s.prev) {
-          const dt = (now - s.prev.t) / 1000;
-          if (dt > 0.3 && inbound.framesDecoded != null) fps = (inbound.framesDecoded - s.prev.frames) / dt;
-        }
-        s.prev = { t: now, frames: inbound.framesDecoded || 0 };
-
-        report.forEach(r => {
-          if (r.type === "candidate-pair" && r.state === "succeeded" && r.nominated && r.currentRoundTripTime != null) rtt = r.currentRoundTripTime * 1000;
-        });
-        if (inbound.frameWidth && inbound.frameHeight) $("stRes").textContent = inbound.frameWidth + "×" + inbound.frameHeight;
-        $("stLatency").textContent = rtt != null ? Math.round(rtt) : "—";
-
-        if (fps != null && isFinite(fps)) {
-          const el = $("stFps");
-          el.textContent = fps.toFixed(0);
-          el.className = fps >= TARGET_FPS - 2 ? "ok" : (fps >= 20 ? "mid" : "bad");
-          if (fps < TARGET_FPS - 2) s.lowSeconds++; else s.lowSeconds = 0;
-          if (s.lowSeconds === 5) setNotice("FPS ниже " + TARGET_FPS + " (сейчас " + fps.toFixed(0) + "). Обычно причина на стороне ПК (нагрузка на CPU/GPU, кодер) или в слабой сети. Подробности — в streaming.log на компьютере.", true);
-          if (s.lowSeconds === 0 && $("notice").classList.contains("warn")) setNotice("Не закрывайте Mini App во время просмотра.", false);
-        }
-      } catch {}
-    }, 1000);
-  }
-
-  // ---------- Управление мышью ----------
-  function videoContentRect() {
-    const box = video.getBoundingClientRect();
-    const vw = video.videoWidth, vh = video.videoHeight;
-    if (!vw || !vh || !box.width || !box.height) return null;
-    const scale = Math.min(box.width / vw, box.height / vh);
-    const w = vw * scale, h = vh * scale;
-    return { left: box.left + (box.width - w) / 2, top: box.top + (box.height - h) / 2, width: w, height: h };
-  }
-
-  function toFraction(clientX, clientY) {
-    const r = videoContentRect();
-    if (!r) return null;
-    const x = (clientX - r.left) / r.width;
-    const y = (clientY - r.top) / r.height;
-    if (x < 0 || x > 1 || y < 0 || y > 1) return null;
-    return { x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) };
-  }
-
   function lockControl() {
     controlOn = false;
     screenEl.classList.remove("control");
@@ -441,54 +236,176 @@ video{width:100%;height:100%;object-fit:contain;display:block;background:#020408
     controlOn = true;
     screenEl.classList.add("control");
   }
-
-  function showRipple(clientX, clientY, button) {
-    const sr = screenEl.getBoundingClientRect();
-    const d = document.createElement("div");
-    d.className = "ripple" + (button === "right" ? " right" : "");
-    d.style.left = (clientX - sr.left) + "px";
-    d.style.top = (clientY - sr.top) + "px";
-    screenEl.appendChild(d);
-    setTimeout(() => d.remove(), 600);
+  function resetStats() {
+    $("stFps").textContent = "—";
+    $("stLatency").textContent = "—";
+    $("stRes").textContent = "—";
+  }
+  function humanError(err) {
+    const m = String(err && err.message || err || "");
+    if (m.includes("no_init_data")) return "Откройте приложение через Telegram.";
+    if (m.includes("no_webrtc")) return "Этот браузер не поддерживает WebRTC.";
+    if (m.includes("connect_timeout")) return "Компьютер не ответил вовремя.";
+    if (m.includes("no_video")) return "Соединение установлено, но видеопоток не поступил.";
+    if (m.includes("answer_timeout")) return "Компьютер не подтвердил подключение.";
+    return m || "Проверьте подключение и попробуйте снова.";
   }
 
-  function haptic(kind) {
-    try { if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred(kind || "light"); } catch {}
+  // ---------- HTTP API ----------
+  async function api(path, options = {}) {
+    const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+    if (tg && tg.initData) headers["X-Telegram-Init-Data"] = tg.initData;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), options.timeout || 10000);
+    try {
+      const response = await fetch(API_BASE + path, {
+        method: options.method || "GET",
+        headers,
+        body: options.body ? JSON.stringify(options.body) : undefined,
+        signal: controller.signal,
+        keepalive: !!options.keepalive
+      });
+      let data = null;
+      try { data = await response.json(); } catch {}
+      return { ok: response.ok, status: response.status, data };
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
+  function uuid() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === "x" ? r : (r & 3 | 8)).toString(16);
+    });
+  }
+  function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+  function videoContentRect() {
+    const rect = video.getBoundingClientRect();
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh || !rect.width || !rect.height) return null;
+    const scale = Math.min(rect.width / vw, rect.height / vh);
+    const width = vw * scale, height = vh * scale;
+    return { left: rect.left + (rect.width - width) / 2, top: rect.top + (rect.height - height) / 2, width, height };
+  }
+  function toFraction(clientX, clientY) {
+    const r = videoContentRect();
+    if (!r || clientX < r.left || clientY < r.top || clientX > r.left + r.width || clientY > r.top + r.height) return null;
+    return { x: (clientX - r.left) / r.width, y: (clientY - r.top) / r.height };
+  }
+
+  // ---------- WebRTC ----------
+  function createPeer(s) {
+    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    s.pc = pc;
+    pc.addTransceiver("video", { direction: "recvonly" });
+    pc.ontrack = event => {
+      if (!s.alive) return;
+      const stream = event.streams && event.streams[0];
+      if (stream) video.srcObject = stream;
+      else {
+        const ms = video.srcObject || new MediaStream();
+        ms.addTrack(event.track);
+        video.srcObject = ms;
+      }
+      video.play().catch(() => {});
+    };
+    pc.onconnectionstatechange = () => {
+      if (!s.alive) return;
+      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+        fail(s, new Error("connect_timeout"));
+      }
+    };
+    return pc;
+  }
+
+  async function makeOffer(s) {
+    const offer = await s.pc.createOffer();
+    await s.pc.setLocalDescription(offer);
+    const started = Date.now();
+    while (s.pc.iceGatheringState !== "complete" && Date.now() - started < ICE_GATHER_TIMEOUT_MS) {
+      await sleep(100);
+    }
+    return s.pc.localDescription.sdp;
+  }
+
+  async function postOffer(s, sdp) {
+    const result = await api("/api/signal/offer", {
+      method: "POST",
+      body: { sessionId: s.id, sdp, initData: tg.initData }
+    });
+    if (!result.ok) throw new Error("offer_http_" + result.status);
+    s.started = true;
+  }
+
+  async function pollAnswer(s) {
+    const deadline = Date.now() + ANSWER_TIMEOUT_MS;
+    while (s.alive && Date.now() < deadline) {
+      const result = await api("/api/signal/answer?sessionId=" + encodeURIComponent(s.id), { timeout: 8000 });
+      if (result.ok && result.data) {
+        const answer = result.data.sdp || result.data.answer || result.data;
+        if (typeof answer === "string" && answer.includes("v=0")) return answer;
+      }
+      await sleep(POLL_MS);
+    }
+    throw new Error("answer_timeout");
+  }
+
+  // ---------- Статистика ----------
+  function startStats(s) {
+    clearInterval(s.statsTimer);
+    s.statsTimer = setInterval(async () => {
+      if (!s.alive || !s.pc) return;
+      try {
+        const stats = await s.pc.getStats();
+        let fps = null, width = null, height = null, latency = null;
+        stats.forEach(report => {
+          if (report.type === "inbound-rtp" && report.kind === "video" && !report.isRemote) {
+            fps = report.framesPerSecond ?? fps;
+            width = report.frameWidth ?? width;
+            height = report.frameHeight ?? height;
+          }
+          if (report.type === "candidate-pair" && report.state === "succeeded" && report.currentRoundTripTime != null) {
+            latency = Math.round(report.currentRoundTripTime * 1000);
+          }
+        });
+        $("stFps").textContent = fps == null ? "—" : Math.round(fps);
+        $("stLatency").textContent = latency == null ? "—" : latency;
+        $("stRes").textContent = width && height ? width + "×" + height : "—";
+      } catch {}
+    }, 1000);
+  }
+
+  // ---------- Клики и движение мыши ----------
   let lastClickAt = 0;
-  async function sendClick(fx, fy, button, clientX, clientY) {
+  function showRipple(x, y, button) {
+    const r = document.createElement("div");
+    r.className = "ripple" + (button === "right" ? " right" : "");
+    r.style.left = x + "px";
+    r.style.top = y + "px";
+    screenEl.appendChild(r);
+    setTimeout(() => r.remove(), 600);
+  }
+  async function sendClick(x, y, button, clientX, clientY) {
     const s = cur;
     if (!controlOn || !s || !s.alive || !s.playing) return;
     const now = Date.now();
     if (now - lastClickAt < CLICK_MIN_GAP_MS) return;
     lastClickAt = now;
-
-    showRipple(clientX, clientY, button);
-    haptic(button === "right" ? "medium" : "light");
+    if (clientX != null) showRipple(clientX, clientY, button);
     try {
-      const res = await api("/api/mouse/click", {
-        method: "POST", timeout: 6000,
-        body: {
-          sessionId: s.id,
-          x: Math.round(fx * 10000) / 10000,
-          y: Math.round(fy * 10000) / 10000,
-          button,
-          initData: tg.initData
-        }
+      await api("/api/mouse/click", {
+        method: "POST",
+        body: { sessionId: s.id, x, y, button, initData: tg.initData }
       });
-      if (!res.ok) setNotice("Клик не выполнен: " + humanError(new Error(await errorCode(res))), true);
-    } catch (e) {
-      setNotice(isNetworkError(e) ? "Клик не доставлен: нет связи с сервером." : "Клик не выполнен: " + humanError(e), true);
-    }
+    } catch {}
   }
 
-  // Отправляется только последняя точка движения, без накопления старых запросов.
-  let moveInFlight = false;
   let pendingMove = null;
-  let lastMoveSentAt = 0;
+  let moveInFlight = false;
   let moveTimer = 0;
-
+  let lastMoveSentAt = 0;
   async function flushMouseMove() {
     if (moveInFlight || !pendingMove) return;
     const wait = MOVE_SEND_INTERVAL_MS - (Date.now() - lastMoveSentAt);
@@ -515,9 +432,8 @@ video{width:100%;height:100%;object-fit:contain;display:block;background:#020408
       if (!res.ok) {
         // Не показываем уведомление на каждую точку движения.
       }
-    } catch {
-      // Временная потеря сети не должна превращать движение в клик.
-    } finally {
+    } catch { /* временная потеря сети не должна превращать движение в клик */ }
+    finally {
       moveInFlight = false;
       if (pendingMove) flushMouseMove();
     }
@@ -533,7 +449,45 @@ video{width:100%;height:100%;object-fit:contain;display:block;background:#020408
   (function initPointerControl() {
     let press = null;
     let suppressContextMenuUntil = 0;
+    let dragMovePending = null;
+    let dragMoveInFlight = false;
+    let dragChain = Promise.resolve();
 
+    function postDrag(action, f) {
+      const s = cur;
+      if (!s || !s.alive || !s.playing) return Promise.resolve();
+      return api("/api/mouse/button", {
+        method: "POST", timeout: 5000,
+        body: { sessionId: s.id, action, ...(f ? { x: f.x, y: f.y } : {}), initData: tg.initData }
+      }).then(res => { if (!res.ok) throw new Error("drag_http_" + res.status); }).catch(() => {});
+    }
+
+    function pumpDragMove() {
+      if (dragMoveInFlight || !dragMovePending) return;
+      const f = dragMovePending;
+      dragMovePending = null;
+      dragMoveInFlight = true;
+      dragChain = dragChain.then(() => postDrag("move", f)).finally(() => {
+        dragMoveInFlight = false;
+        pumpDragMove();
+      });
+    }
+    function queueDragMove(x, y) {
+      const f = toFraction(x, y);
+      if (!f) return;
+      dragMovePending = f;
+      pumpDragMove();
+    }
+    async function finishDrag(x, y) {
+      const f = toFraction(x, y);
+      if (f) dragMovePending = f;
+      while (dragMovePending || dragMoveInFlight) {
+        pumpDragMove();
+        await sleep(8);
+      }
+      await dragChain;
+      await postDrag("up");
+    }
     function cancelPress(releaseCapture = false) {
       const p = press;
       if (!p) return;
@@ -542,66 +496,74 @@ video{width:100%;height:100%;object-fit:contain;display:block;background:#020408
       if (releaseCapture) {
         try { if (video.hasPointerCapture(p.id)) video.releasePointerCapture(p.id); } catch {}
       }
+      if (p.dragging || p.dragStarting) Promise.resolve(p.dragStartPromise).then(() => postDrag("up"));
     }
 
     video.addEventListener("pointerdown", e => {
       if (!controlOn || (e.pointerType === "mouse" && e.button !== 0)) return;
       e.preventDefault();
       if (press) cancelPress(true);
-      const p = press = {
-        id: e.pointerId, x: e.clientX, y: e.clientY,
-        lastX: e.clientX, lastY: e.clientY,
-        moved: false, handled: false, timer: 0
-      };
+      const p = press = { id:e.pointerId, x:e.clientX, y:e.clientY, lastX:e.clientX, lastY:e.clientY,
+        moved:false, handled:false, dragging:false, dragStarting:false, timer:0 };
       try { video.setPointerCapture(e.pointerId); } catch {}
       p.timer = setTimeout(() => {
-        if (press !== p || p.moved) return;
+        if (press !== p || p.moved || p.dragging) return;
         p.handled = true;
         suppressContextMenuUntil = Date.now() + 1200;
         const f = toFraction(p.lastX, p.lastY);
         if (f) sendClick(f.x, f.y, "right", p.lastX, p.lastY);
       }, LONG_PRESS_MS);
-    }, { passive: false });
+    }, { passive:false });
 
     video.addEventListener("pointermove", e => {
       if (!press || e.pointerId !== press.id) return;
       e.preventDefault();
-      const p = press;
-      p.lastX = e.clientX;
-      p.lastY = e.clientY;
-      if (!p.moved && Math.hypot(e.clientX - p.x, e.clientY - p.y) > TAP_MOVE_TOLERANCE_PX) {
-        p.moved = true;
-        clearTimeout(p.timer);
-      }
-      if (p.moved) queueMouseMove(e.clientX, e.clientY);
-    }, { passive: false });
+      const p = press; p.lastX=e.clientX; p.lastY=e.clientY;
+      if (!p.moved && Math.hypot(e.clientX-p.x,e.clientY-p.y) > TAP_MOVE_TOLERANCE_PX) {
+        p.moved = true; clearTimeout(p.timer);
+        if (dragMode) {
+          p.dragStarting = true;
+          const start = toFraction(p.x,p.y);
+          p.dragStartPromise = start ? postDrag("down",start) : Promise.resolve();
+          p.dragStartPromise.then(() => {
+            p.dragStarting = false;
+            if (press === p && p.moved) { p.dragging = true; queueDragMove(p.lastX,p.lastY); }
+            else if (p.dragging) postDrag("up");
+          });
+        } else {
+          p.cursorMoving = true;
+          queueMouseMove(e.clientX,e.clientY);
+        }
+      } else if (p.dragging) queueDragMove(e.clientX,e.clientY);
+      else if (p.cursorMoving) queueMouseMove(e.clientX,e.clientY);
+    }, { passive:false });
 
-    video.addEventListener("pointerup", e => {
+    video.addEventListener("pointerup", async e => {
       if (!press || e.pointerId !== press.id) return;
       e.preventDefault();
-      const p = press;
-      p.lastX = e.clientX;
-      p.lastY = e.clientY;
-      cancelPress(true);
+      const p=press; p.lastX=e.clientX; p.lastY=e.clientY; clearTimeout(p.timer); press=null;
+      try { if (video.hasPointerCapture(p.id)) video.releasePointerCapture(p.id); } catch {}
       if (p.handled) return;
-      if (p.moved) {
-        queueMouseMove(p.lastX, p.lastY);
+      if (p.dragStarting || p.dragging) {
+        await p.dragStartPromise;
+        await finishDrag(p.lastX,p.lastY);
         return;
       }
-      const f = toFraction(p.x, p.y);
-      if (f) sendClick(f.x, f.y, "left", p.x, p.y);
-    }, { passive: false });
+      if (p.moved || p.cursorMoving) {
+        if (p.cursorMoving) queueMouseMove(p.lastX,p.lastY);
+        return;
+      }
+      const f=toFraction(p.x,p.y);
+      if (f) sendClick(f.x,f.y,"left",p.x,p.y);
+    }, { passive:false });
 
     video.addEventListener("pointercancel", () => cancelPress(true));
-
     video.addEventListener("contextmenu", e => {
-      e.preventDefault();
-      if (!controlOn) return;
-      const longPressAlreadyHandled = !!(press && press.handled) || Date.now() < suppressContextMenuUntil;
-      cancelPress(true);
-      if (longPressAlreadyHandled) return;
-      const f = toFraction(e.clientX, e.clientY);
-      if (f) sendClick(f.x, f.y, "right", e.clientX, e.clientY);
+      e.preventDefault(); if (!controlOn) return;
+      const handled=Date.now()<suppressContextMenuUntil;
+      cancelPress(true); if (handled) return;
+      const f=toFraction(e.clientX,e.clientY);
+      if (f) sendClick(f.x,f.y,"right",e.clientX,e.clientY);
     });
   })();
 
@@ -639,14 +601,7 @@ video{width:100%;height:100%;object-fit:contain;display:block;background:#020408
 
   function sendStop(s) {
     if (!s || !s.started) return;
-    try {
-      api("/api/signal/stop", {
-        method: "POST",
-        body: { sessionId: s.id, initData: tg.initData },
-        keepalive: true,
-        timeout: 5000
-      }).catch(() => {});
-    } catch {}
+    try { api("/api/signal/stop", { method: "POST", body: { sessionId: s.id, initData: tg.initData }, keepalive: true, timeout: 5000 }).catch(() => {}); } catch {}
   }
 
   async function connect() {
@@ -711,6 +666,7 @@ video{width:100%;height:100%;object-fit:contain;display:block;background:#020408
   function disconnect() {
     const s = cur;
     if (!s) return;
+    try { api("/api/mouse/button", { method:"POST", timeout:2000, body:{ sessionId:s.id, action:"up", initData:tg.initData } }).catch(() => {}); } catch {}
     sendStop(s);
     teardown(s);
     resetStats();
@@ -719,21 +675,42 @@ video{width:100%;height:100%;object-fit:contain;display:block;background:#020408
 
   $("retryBtn").addEventListener("click", connect);
   $("disconnectBtn").addEventListener("click", disconnect);
-  window.addEventListener("pagehide", () => {
-    if (cur && cur.alive) sendStop(cur);
+  $("miniDisconnect").addEventListener("click", disconnect);
+  $("keyboardToggle").addEventListener("click", () => {
+    $("keyboardPanel").classList.toggle("open");
+    if ($("keyboardPanel").classList.contains("open")) $("remoteText").focus();
   });
+  $("dragToggle").addEventListener("click", () => {
+    dragMode = !dragMode;
+    $("dragToggle").classList.toggle("active", dragMode);
+  });
+  async function sendRemoteText() {
+    const value = $("remoteText").value;
+    if (!value || !cur || !cur.alive || !cur.playing) return;
+    try {
+      const result = await api("/api/keyboard/text", {
+        method:"POST", timeout:5000,
+        body:{ sessionId:cur.id, text:value, initData:tg.initData }
+      });
+      if (result.ok) $("remoteText").value = "";
+    } catch {}
+  }
+  $("sendRemoteText").addEventListener("click", sendRemoteText);
+  $("remoteText").addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); sendRemoteText(); }
+  });
+
+  window.addEventListener("pagehide", () => { if (cur && cur.alive) sendStop(cur); });
 
   // ---------- Автозапуск ----------
   try {
     if (tg) {
-      tg.ready();
-      tg.expand();
+      tg.ready(); tg.expand();
       if (tg.setHeaderColor) tg.setHeaderColor("#080b12");
       if (tg.setBackgroundColor) tg.setBackgroundColor("#080b12");
       if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
     }
   } catch {}
-
   connect();
 })();
 </script>
